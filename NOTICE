@@ -8,6 +8,7 @@ the lines we changed.
 Ideas credited in the file headers:
 - K-permutation of NVFP4 codes per stage: alygg77/okc-muse-spark-kernels
 - 6-bit lossless NVFP4 block scales: keell0renz/muse-open-kernel-challenge
+- Warp-parallel stream-K range computation: keell0renz/muse-open-kernel-challenge
 - FP32 router input rule at up to 8 tokens: alygg77 and Matsvei
 
 The prefill file reproduces the layer structure of SGLang (Apache License, Version 2.0)

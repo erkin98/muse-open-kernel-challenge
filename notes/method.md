@@ -1,5 +1,7 @@
 # Method, per-problem notes and compliance
 
+How we measured on the judge, what we tried on each problem, and the compliance points we settled along the way.
+
 ## How we measured
 
 - `okc check` runs the same tests and timing as a submit but stays off the board. Identical bytes come back with status `duplicate` and cost no quota.
@@ -14,7 +16,7 @@
 |muse_attention_decode|see `attention.md`|2.621x; small real gains from the flat 8-token path and BF16 vector reductions, everything else flat or worse|
 |muse_moe_w4a16|K-reordered NVFP4 codes, 6-bit block scales, stream-K constants, scheduling and dequant variants|2.362x; an 8-op dequant variant regressed (2.222x against 2.36x); the other variants were inside the noise|
 |muse_decode_layer|the MoE changes above, an FP32 router input up to 8 tokens, a PDL cap of 128 for the glue kernels|2.083x; the PDL cap was inside the noise|
-|muse_bf16_proj|a Triton router candidate, a 128-row split variant|1.491x; the split variant gave nothing|
+|muse_bf16_proj|a Triton router candidate, a wgmma kernel at 128 tokens that decodes the 12-bit weights in registers, other 128/256-token routes|1.491x; none of the routes beat the existing picks|
 |muse_prefill_layer|a reproduction of SGLang's own layer|0.999x, parity|
 
 ## Compliance notes

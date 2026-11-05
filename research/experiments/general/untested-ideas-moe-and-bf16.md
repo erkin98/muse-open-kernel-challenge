@@ -4,6 +4,8 @@ This file records what we found when we went through a list of ideas nobody on t
 
 We asked of each idea whether it could move the whole-problem score by more than a judged check can see. A single run of a problem has about 0.8% of noise, and the offset between judge clusters is 1 to 2%, so an idea needs a plausible 2.5 to 3% to justify a check. Most of these fail that test before any GPU time is spent. One was tested on the judge (see [pdl-cap-and-other-checks.md](../decode-layer/pdl-cap-and-other-checks.md)). The attention ideas are in [untested-ideas-results.md](../attention-extra/untested-ideas-results.md).
 
+The verdicts are as of Nov 4. Later, the flush constant 4 measured 0.1% to 0.5% in-process (under our bar), and the 8-op dequant was tried on the wgmma loop and lost (job 84b9fccd4a804a48, 2.222x against 2.36x). Split-expert reuse and deferred normalization stayed untested.
+
 |Idea|Problem|Verdict|
 |-|-|-|
 |Stream-K flush constant 3 to 4|MoE|Closed earlier as below noise, not re-measured|

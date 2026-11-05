@@ -38,7 +38,7 @@ Apache-2.0. Head commit f35a41e, last commit Oct 28, one issue (a thank-you note
 
 ## alygg77/okc-muse-spark-kernels
 
-Apache-2.0, with nathenfernandes Fernandes's MIT licence text in a licences folder. We read its documents in full (README, RESULTS, results.json, a measured-facts file, a negative-results file, the timing kit); the kernel files were read only as a diff against the vjeux base. The details are in alygg77-repo-digest.md.
+Apache-2.0, with nathenfernandes's MIT licence text in a licences folder. We read its documents in full (README, RESULTS, results.json, a measured-facts file, a negative-results file, the timing kit); the kernel files were read only as a diff against the vjeux base. The details are in alygg77-repo-digest.md.
 
 - Claimed: attention 2.653x, moe 2.401x, bf16 1.511x, decode_layer 2.206x.
 - Verified: its attention and prefill files are the vjeux files with only a two-line header added, so its attention row is our kernel and the gap to our 2.605x is judge noise. Moe adds a scale-sharing K-permutation (KPERM3) and an alternate helper-warp build. Decode_layer appends about 2,700 lines of layered overrides.

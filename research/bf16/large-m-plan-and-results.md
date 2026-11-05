@@ -10,27 +10,27 @@ Per-load ratios (SGLang's summed layer time over ours) for the scored run of the
 
 |Load|decode 1|decode 16|decode 32|verify m=8|verify m=128|verify m=256|
 |-|-|-|-|-|-|-|
-|Ratio|1.731|1.564|1.487|1.916|1.225|1.169|
+|Ratio|1.730|1.563|1.486|1.912|1.225|1.169|
 
-The geometric mean is 1.492, matching the judge's 1.491. The two large verify loads are the drag. The o layer runs at cuBLAS speed there (0.99 to 1.00x), and qkv_gate, pooler and unpooler gain only 1.02 to 1.13x.
+The geometric mean is 1.491, matching the judge. The two large verify loads are the drag. The o layer runs at cuBLAS speed there (0.99 to 1.00x), and qkv_gate, pooler and unpooler gain only 1.02 to 1.13x.
 
 What lifting those two loads would be worth (our arithmetic):
 
 |Change|Score|
 |-|-|
 |verify 128 and 256 loads to 1.35|1.553x|
-|both to 1.45|1.591x (about the top 50)|
-|both to 1.60|1.644x|
-|decode 16 and 32 loads +8%|1.531x|
+|both to 1.45|1.590x (about rank 70 on the Nov 4 board)|
+|both to 1.60|1.643x|
+|decode 16 and 32 loads +8%|1.530x|
 
 At these sizes the work is compute-heavy. Pooler at m = 256 is 17.2 GFLOP, about 17 µs at peak, against 27.5 µs for us and 30.8 for SGLang. nathenfernandes's published pooler times are 20.5 µs at m = 128 and 24.2 µs at m = 256, so that much is reachable by someone.
 
 Two structural notes from what we measured:
 
-- The CUTLASS pooler kernel at m = 256 moves about 384 MB through L2 in 26.6 µs, and cuBLAS qkv_gate at m = 256 about 250 MB in 19.5 µs. That is roughly 14 TB/s from L2 to the SMs, so these shapes are traffic-bound, and the lever is tiles with more reuse (128 weight rows x 256 tokens plus split-K).
-- qkv_gate at m = 256 has only 36 output tiles on 132 SMs, which is a structural problem for any tile-per-CTA scheme.
+- The CUTLASS pooler kernel at m = 256 moves about 384 MB through L2 in 26.6 µs, and cuBLAS qkv_gate at m = 256 about 250 MB in 19.5 µs. That is roughly 13 to 14 TB/s from L2 to the SMs (our plan's estimate, not derived from a counter), so these shapes are probably traffic-bound, and the lever is tiles with more reuse (128 weight rows x 256 tokens plus split-K).
+- qkv_gate at m = 256 has only 36 output tiles on 132 SMs if the tile is 64 weight rows by 256 tokens (our assumption; cuBLAS's own kernel uses other tiles), which is a structural problem for any tile-per-CTA scheme.
 
-What thethings found at m = 128/256 (third-party): cuBLAS's pooler at m = 128 uses 64x64 tiles, so every weight byte is fetched by two CTAs, about 2.6 TB/s effective. A Triton tile of 64 weight rows x 128 tokens x BK 128 with split-K 2 beat it, 23.3 against 25.4 µs. cuBLAS reaches about 340 TFLOP/s on the pooler at m = 128 and 590 at m = 256. The best of cuBLASLt's 8 heuristic algorithms was 2% better (pooler m=128 25.0 to 23.0). Their own TMA + wgmma kernels lost to cuBLAS; a swap-AB wgmma kernel (weights as the M = 64 side, tokens as N) ties or loses because its main loop is ingest-bound at about 85 GB/s per SM, as x is re-read from L2 for every row tile. DeepGEMM's `bf16_gemm_nt` was identical to cuBLAS (it dispatches there), and a CUTLASS 4.5 sweep of 12 sm90 configurations was slower than cuBLAS.
+What thethings found at m = 128/256 (third-party): cuBLAS's pooler at m = 128 uses 64x64 tiles, so every weight byte is fetched by two CTAs, about 2.6 TB/s effective. A Triton tile of 64 weight rows x 128 tokens x BK 128 with split-K 2 beat it, 23.3 against 25.4 µs. cuBLAS reaches about 340 TFLOP/s on the pooler at m = 128 and 590 at m = 256. The best of cuBLASLt's 8 heuristic algorithms was about 2% better summed over the four dense layers (pooler m=128 alone went from 25.0 to 23.0 µs). Their own TMA + wgmma kernels lost to cuBLAS; a swap-AB wgmma kernel (weights as the M = 64 side, tokens as N) ties or loses because its main loop is ingest-bound at about 85 GB/s per SM, as x is re-read from L2 for every row tile. DeepGEMM's `bf16_gemm_nt` was identical to cuBLAS (it dispatches there), and a CUTLASS 4.5 sweep of 12 sm90 configurations was slower than cuBLAS.
 
 ## What runs at m = 128 and 256 in the submitted file
 
@@ -81,7 +81,7 @@ The last two ratios are our own sums from the judge's per-shape rows. No route c
 
 ### Check 1: cuBLASLt configurations
 
-On the H200 every cuBLASLt configuration is algorithm id 66, 17 unique per weight layout, with tile ids 17 to 28, 135 and 184, cluster ids 3 to 9 and split-K 1 to 4. All were kernel-only under capture and accurate. None beat the existing pick except, marginally, unpooler at m = 256 (27.36 against 27.62 µs, inside the 2% margin). Best cuBLASLt against the pick, raw replay µs:
+On the H200 every cuBLASLt configuration is algorithm id 66, 17 unique per weight layout, with tile ids 17 to 28, 135, 184 and 208, cluster ids 3 to 9 and split-K 1 to 5. All were kernel-only under capture and accurate. None beat the existing pick except, marginally, unpooler at m = 256 (27.36 against 27.62 µs, inside the 2% margin). Best cuBLASLt against the pick, raw replay µs:
 
 |Shape|cuBLASLt|Existing pick|
 |-|-|-|
@@ -94,11 +94,11 @@ On the H200 every cuBLASLt configuration is algorithm id 66, 17 unique per weigh
 |pooler m=256|32.45|CUTLASS 31.49|
 |unpooler m=256|27.36|27.62|
 
-cuBLAS's default is already its best choice here. A second run gave identical picks. Enumerating explicit tile x cluster x split-K combinations within the same algorithm id did not seem worth a check.
+No configuration beat the existing pick on any shape, though against the plain cuBLAS call a few did (pooler m=128 26.82 against 29.02 µs, pooler m=256 32.45 against 35.30), and those shapes already run on gq and CUTLASS. A second run gave identical picks. Enumerating explicit tile x cluster x split-K combinations within the same algorithm id did not seem worth a check.
 
 ### Check 2: split-K wgmma GEMM and cuBLAS on a K-major copy
 
-Check 1 plus "gemmx" (the file's existing split-K wgmma GEMM, gemm90, already compiled for every layer) as a candidate for the BF16 layers with the config's split count, and "torchT" for qkv_gate and pooler. gemmx lost to cuBLAS by 20 to 100% everywhere:
+Check 1 plus "gemmx" (the file's existing split-K wgmma GEMM, gemm90, already compiled for every layer) as a candidate for the BF16 layers with the config's split count, and "torchT" for qkv_gate and pooler. gemmx lost to the existing pick by 14% to 107% on every shape:
 
 |Shape|gemmx|Existing pick|
 |-|-|-|
@@ -127,7 +127,7 @@ Six new instantiations of the existing gq and gqx kernels, the only custom kerne
 
 ### Checks 4 and 5: the rs128 design
 
-This is the design from a public file header, described in where-the-score-comes-from.md: swap-AB wgmma with the weights as the M = 64 side and the 12-bit pack decoded into A registers, K split over a one-wave grid, BF16 partials reduced into a self-zeroing output. The live rules, as we read them on Nov 4, allow BF16 or FP16 split-K partials, which is what made this design possible. We built it for pooler, unpooler and o at m = 128.
+This is the design from a public file header, described in where-the-score-comes-from.md: swap-AB wgmma with the weights as the M = 64 side and the 12-bit pack decoded into A registers, K split over a one-wave grid, BF16 partials reduced into a self-zeroing output. The live rules, as we read them on Nov 4, allow BF16 or FP16 split-K partials, which is what made this design possible. We built a version for pooler, unpooler and o at m = 128 that kept FP32 partials in the existing workspace and let the last CTA to arrive sum them in a fixed order.
 
 It lost badly in the prepare-time comparison in both runs, raw replay µs:
 
@@ -145,14 +145,14 @@ Across the five checks the large-m shapes ran on the same kernels as the scored 
 
 Measured negatives, each in a full cold-L2 judge run:
 
-1. cuBLASLt configuration choice: every configuration is algorithm id 66 and none beats cuBLAS's default or the existing custom picks.
-2. gemm90, a split-K wgmma GEMM, for the BF16 layers: 20 to 100% slower than cuBLAS on all eight shapes.
+1. cuBLASLt configuration choice: every configuration is algorithm id 66 and none beats the existing picks.
+2. gemm90, a split-K wgmma GEMM, for the BF16 layers: 14% to 107% slower than the existing picks on all eight shapes.
 3. Six more gq/gqx instantiations: all slower.
 4. A swap-AB register-A wgmma kernel with 12-bit weights unpacked into registers (rs128): roughly 1.6x to 2x the raw replay time of the existing picks at m = 128.
 
 What nobody here has tried:
 
 - CUTLASS stream-K or split-K for qkv_gate at m = 256. Beware that CUTLASS stream-K workspace setup may add a memset per call, which the rules exclude.
-- A tile with more reuse, 128 weight rows x 256 tokens plus split-K, since the shapes are L2-traffic bound. gemm90 is the closest thing we built and it lost.
+- A tile with more reuse, 128 weight rows x 256 tokens plus split-K, since the shapes are L2-traffic bound. gemm90 is the closest thing we tried, and it lost.
 - The other team's pooler numbers (20.5 and 24.2 µs) suggest 2 to 3.5 µs is reachable on the pooler. None of our routes found it.
 - The one-constant K-split change for the m = 128 router (12 to 16 splits), worth 0.1% at best.

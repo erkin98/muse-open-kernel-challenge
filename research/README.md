@@ -25,8 +25,8 @@ Attention decode: cost model, gap to the leaders, ideas tried, launch-plan sweep
 |-|-|
 |[Cost model and per-shape breakdown](attention/cost-model-and-breakdown.md)|Where the attention score comes from, shape by shape: the weights, the bounds we compared ourselves to, and a two-parameter model of the heavy full-attention shapes.|
 |[What the gap to the leaders requires](attention/gap-to-the-leaders.md)|Arithmetic only: how much time each rank target would take off our 2.6211x, and which combinations of shape improvements could get there.|
-|[How the top teams reach 3x on attention](attention/how-the-top-teams-reach-3x.md)|Here is what the public record and our own numbers can say about the teams above 3.0x on the attention board, with a clear line between what we know and what we are guessing.|
-|[Ideas tried and what they returned](attention/ideas-tried-and-results.md)|Here is every attention idea we measured or ruled out on paper, with its result, followed by our ranking of the headroom that is left.|
+|[How the top teams reach 3x on attention](attention/how-the-top-teams-reach-3x.md)|This file sets out what the public record and our own numbers can say about the teams above 3.0x on the attention board, with a clear line between what we know and what we are guessing.|
+|[Ideas tried and what they returned](attention/ideas-tried-and-results.md)|This file lists every attention idea we measured or ruled out on paper, with its result, followed by our ranking of the headroom that is left.|
 |[Judge runs and noise](attention/judge-runs-and-noise.md)|Identical code does not produce identical judge numbers, and this file records how far they move, what that hides from us, and how we read results because of it.|
 |[Launch-plan sweep over all twelve shapes](attention/launch-plan-sweep.md)|One round of eight judge runs tested different launch-plan settings (split counts, workspace copies, finalize mode) on all twelve shapes at once, and this file has the per-shape results.|
 |[Linear exp2, deeper pipelines and cold-code warming](attention/linear-exp2-and-cold-code-warming.md)|Our first two judge checks on top of vjeux's public entry (a cheaper exp2 with deeper pipelines, then cold-code warming) are written up here, along with how we validated kernels without a GPU and...|
@@ -40,7 +40,7 @@ MoE W4A16: the K-reordered weights with 6-bit scales, results, ideas tried and c
 |-|-|
 |[muse_moe_w4a16: ideas we weighed and closed](moe/ideas-tried-and-closed.md)|Most of the MoE ideas we did not ship are listed here with the numbers or reasoning behind each, along with two open questions.|
 |[muse_moe_w4a16: K-reordered weights and 6-bit scales](moe/kperm-and-6-bit-scales.md)|The wgmma build of the MoE kernel got three changes, K-reordered weights, 6-bit scales and warp-parallel stream-K ranges, and this file covers how they work, how we checked them without a GPU and...|
-|[muse_moe_w4a16: judged runs](moe/results.md)|Every MoE run we kept notes on, from the vjeux baseline at 2.332x to our submitted file at 2.362x, is listed here with per-shape speedups and our reading of them.|
+|[muse_moe_w4a16: judged runs](moe/results.md)|The judged runs that led to our submitted MoE file, from the vjeux baseline at 2.332x to 2.362x, with per-shape speedups and our reading of them.|
 
 ## decode-layer
 
@@ -51,7 +51,7 @@ Whole decoder layer: results, the FP32 router rule up to 8 tokens, the PDL failu
 |[muse_decode_layer: a GEMV that read its input too early](decode-layer/cgemv-failure-under-pdl.md)|Our first decode-layer attempt, a compressed-weight GEMV for one-token projections, failed 3 of 13 tests on a programmatic dependent launch (PDL) bug, and this file records what happened and what...|
 |[muse_decode_layer: FP32 router input up to 8 tokens](decode-layer/fp32-router-input-rule.md)|The vjeux decode-layer file rounded the router's input to BF16 at 8 tokens or fewer where SGLang keeps FP32; this file covers the rule, our fix, how we checked it without a GPU and what it cost.|
 |[muse_decode_layer: the MoE port and the other ideas we weighed](decode-layer/moe-port-and-other-ideas.md)|Porting the MoE byte cuts into the decode layer turned out to be a wash, and this file covers the port, why we read it that way, and the other ideas we weighed with their numbers.|
-|[muse_decode_layer: judged runs](decode-layer/results.md)|The decode-layer kernel scored between 2.072x and 2.105x in the passing runs below, which also show how much of the per-shape movement is noise.|
+|[muse_decode_layer: judged runs](decode-layer/results.md)|The decode-layer kernel scored between 2.059x and 2.105x in the passing runs below, which also show how much of the per-shape movement is noise.|
 
 ## bf16
 

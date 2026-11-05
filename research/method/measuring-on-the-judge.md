@@ -57,7 +57,7 @@ So checking an unchanged file is a free way to read back its last result, for ex
 
 ## The queue sets your real budget
 
-Near the end of the track the judge backlog reached 1,723 jobs (read from the queue endpoint of the judge's API). Checks that ran in about 4 minutes waited 1h10 to 1h20 in line. On Nov 4 a single run was already about an hour in the queue.
+On the morning of Nov 4, with a day of the track left, the judge backlog was 1,723 jobs (read from the queue endpoint of the judge's API). Checks that ran in about 4 minutes waited 1h10 to 1h20 in line, so a single run was already about an hour in the queue.
 
 Two consequences. Read the queue before planning how many checks you can fit. And batch independent per-shape candidates into one checked file, so each trip through the queue answers several questions.
 

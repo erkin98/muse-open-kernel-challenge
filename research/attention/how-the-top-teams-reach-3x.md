@@ -1,6 +1,6 @@
 # How the top teams reach 3x on attention
 
-Here is what the public record and our own numbers can say about the teams above 3.0x on the attention board, with a clear line between what we know and what we are guessing.
+This file sets out what the public record and our own numbers can say about the teams above 3.0x on the attention board, with a clear line between what we know and what we are guessing.
 
 The short version: nobody at the top has published a mechanism. No handle in the top ten has a public repository, write-up or gist for this problem that we could find. What follows is a record plus a consistency argument, not a reverse-engineering result.
 

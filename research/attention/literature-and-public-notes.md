@@ -21,7 +21,7 @@ Result of the reading pass: every mechanism in these sources is already in the k
 
 ## An outside experiment page on a neighbouring problem
 
-A public page at https://posttrainllm.com/experiments/openkernel-attention-20261023 records a closed experiment dated 2026-10-23, with a longer write-up at https://posttrainllm.com/docs/learn/openkernel/. We read both for ideas and did not open their submission code.
+A public experiment page from an outside site (dated 2026-10-23, path /experiments/openkernel-attention-20261023) records a closed experiment, with a longer write-up under /docs/learn/openkernel/ on the same site. We read both for ideas and did not open their submission code.
 
 The experiment is about fusing the attention preparation (QK-norm, RoPE and the cache-slot writes) in front of the existing SGLang attention, not about a new attention kernel. Their scored H200 run, f141c8d265234a99, reached 1.1357x aggregate (95% interval 1.1187 to 1.1528x) with correctness passing. The lesson they state is that the fusion has to keep BF16 rounding, the exact RoPE table, the cache-slot writes and the fallbacks for non-unit scales. The experiment closed at rank 283 of 749, short of its top-100 target.
 

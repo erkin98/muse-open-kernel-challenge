@@ -4,9 +4,9 @@ Where each of our board scores came from, what we wrote ourselves, what we borro
 
 ## The short version
 
-At midday on Nov 4, every score on our four boards came from vjeux's public Apache-2.0 entry (his okc-2026 repository at commit f35a41e), submitted with a 15-line attribution header and nothing else that changes speed. The speed was his. Later that day and on Nov 5 we submitted modified versions for three problems: attention (a flat 8-token path and BF16 vector reductions, now 2.621×), moe (K-reordered weights with 6-bit block scales, now 2.362×) and decode_layer (an FP32 router input up to 8 tokens plus the same moe changes, now 2.083×). The gains over his entries are small: about +0.6% on attention and +1.4% on moe, and decode_layer ended slightly lower because the FP32 router rule costs a little. Our own code, written without reading his, reached 1.150× as its best bf16 board entry and 1.258× on its best judge check. That is well short of the borrowed 1.491× on the same problem.
+At midday on Nov 4, every score on our four boards came from vjeux's public Apache-2.0 entry (his okc-2026 repository at commit f35a41e), submitted with a 15-line attribution header and nothing else that changes speed. The speed was his. Later that day and on Nov 5 we submitted modified versions for three problems: attention (a flat 8-token path and BF16 vector reductions, now 2.621×), moe (K-reordered weights with 6-bit block scales, now 2.362×) and decode_layer (an FP32 router input up to 8 tokens plus the same moe changes, now 2.083×). The gains over his entries are small and sit inside the judge's run-to-run spread: about +0.6% on attention and +1.4% on moe, while decode_layer ended 0.6% lower. The FP32 router input does a little more work on the four shapes up to 8 tokens, which probably explains the lower decode_layer number, but one run cannot separate that from noise. Our own code, written without reading his, reached 1.150× as its best bf16 board entry and 1.258× on its best judge check. That is well short of the borrowed 1.491× on the same problem.
 
-The scores below are the state around midday on Nov 4. Later submissions changed some of these numbers, and this document stops at that point. The decode_layer entry 9b0d0973f11a4758 was withdrawn afterwards because its router input was not FP32 up to 8 tokens. For how to read a score line and its interval, see `measuring-on-the-judge.md`.
+The table below is the state around midday on Nov 4. Later submissions replaced three of those entries; the sections on later work carry the results through Nov 5. The decode_layer entry 9b0d0973f11a4758 was withdrawn afterwards because its router input was BF16-rounded at 8 tokens and below, where SGLang keeps FP32. For how to read a score line and its interval, see `measuring-on-the-judge.md`.
 
 |Problem|Board entry|Score (95% interval)|Rank|Leader|
 |-|-|-|-|-|
@@ -107,11 +107,11 @@ The failure we could not fix: at m = 16 and 32, staging x before the weight stre
 For all four boards we took vjeux's public entry. What we did:
 
 - Found the public base and got a byte-exact copy: a git clone at f35a41e, with sha256 and git-blob hashes matching the GitHub pages.
-- Added a 15-line Apache-2.0 attribution header.
+- Added an Apache-2.0 attribution header (15 lines on three files, longer on bf16, which also lists its added lines).
 - Checked each file against the rules: graph-safe `kernel_fn`, no compressed source, the precision rules, and that attention's FP8 probabilities match SGLang's FA3 FP8 path.
 - Ran one `okc check` per problem and then submitted.
 
-Each file body is byte-identical to upstream. In the bf16 entry our one added option, a route to the v3 router, is a speed no-op because the judge never picks it.
+For attention, moe and decode_layer the file differs from upstream only by that header. The bf16 entry also carries one added option, a Triton router candidate (our v3 router, which `prepare()` times against the existing router kernels). In the judge log for that entry it lost at all six router sizes, so it changes no speed.
 
 The judge's own profile for the bf16 entry shows a few things about the file:
 
@@ -127,8 +127,8 @@ Per load, the borrowed bf16 entry scored:
 |decode m=1|1.73|
 |decode m=16|1.56|
 |decode m=32|1.49|
-|verify m=8|1.92|
-|verify m=128|1.23|
+|verify m=8|1.91|
+|verify m=128|1.22|
 |verify m=256|1.17|
 
 The two large-m loads hold the problem score down. If both reached 1.45 the score would be about 1.59×.
@@ -145,19 +145,21 @@ After the four entries went in, we tried to beat each by more than the judge's n
 
 ### bf16 at large m
 
-The weak loads are m = 128 and 256, so that is where we worked. Check 1 (cuBLASLt with pinned configs) scored 1.497×. Check 2 (a split-K wgmma GEMM, plus cuBLAS on a K-major copy) scored 1.484×. Every candidate lost to the picks already in the file. A third check with more instances of the existing tiles (job 1dd4d6bbe0214964) was still queued when these notes were written, and we have no result for it. Also ruled out in our notes: Huffman and DFloat11-style coding, which is slower at small batch.
+The weak loads are m = 128 and 256, so that is where we worked. Check 1 (cuBLASLt with pinned configs) scored 1.497×. Check 2 (a split-K wgmma GEMM, plus cuBLAS on a K-major copy) scored 1.484×. Check 3 (six more instances of the existing tiles, job 1dd4d6bbe0214964) scored 1.492×. Every candidate lost to the picks already in the file, so nothing changed route. A separate wgmma GEMM that decodes the 12-bit weights into registers at m = 128 scored 1.505× and 1.491× on two checks; its kernels ran about twice as slow as the existing picks, so no route changed. Also ruled out in our notes: Huffman and DFloat11-style coding, which is slower at small batch.
 
 ### Attention
 
 Check 1 combined a linear-mantissa exp2 with deeper pipelines for q_len 1 and scored 2.550× (2.512–2.588), 16/16, which is worse. The deeper pipelines slowed full-context decode by 3 to 4 µs and the exp2 change gave nothing. Check 2 (job a58eeeeaf93c4bed) tried cold-code warming: idle warps run the final merge once with every load and store switched off, so the real pass runs from a warm instruction cache. Four batch-16 and batch-32 full-context cases ran byte-identical machine code as controls. Result: 2.576× (2.537–2.614), 16/16, no gain. The batch-1 sliding cases did not drop (decode 1 sliding at 5.1 µs, verify 1 sliding at 6.8 µs, no lower than before) and the controls stayed within ±2 µs. We dropped it.
 
+Later we built an in-process A/B harness that resolves roughly 0.1 to 0.5 µs, and it found two small gains. The first is a flat 8-token path (check 3, job 04aae1ba8df8488f, 2.620×; submitted as 0140d9facd2a410d, 2.608×). The second is BF16 vector reductions for one shape (check 4, job 1c1107b8a97d4e45, 2.627×; submitted as 8c9a79b3381c4707, 2.621×). We estimate them at about +0.3 to 0.4% and +0.15% of the score. The check-4 bytes drew anywhere from 2.582× to 2.627×, so those estimates rest on per-shape reads and the headline numbers prove nothing.
+
 ### Moe
 
-We built candidates from our own formulas, with ideas credited and nothing copied: a K-permutation of the NVFP4 codes (alygg77's idea), 6-bit lossless block scales (keell0renz's idea), and a warp-parallel stream-K prologue. A prepare-time A/B keeps a candidate only on a win of 1% or more against an A/A control, capped at 200 s so prepare stays inside its budget. All static gates passed. The first check (job 2eaae7ab93824649) was queued and we have no result for it in these notes. Two other moe candidates are covered in `lessons-learned.md`: one with a cheaper decode regressed, and one never loaded.
+We built candidates from our own formulas, with ideas credited and nothing copied: a K-permutation of the NVFP4 codes (alygg77's idea), 6-bit lossless block scales (keell0renz's idea), and a warp-parallel stream-K prologue. A prepare-time A/B keeps a candidate only on a win of 1% or more against an A/A control, capped at 200 s so prepare stays inside its budget. All static gates passed. The first check (job 2eaae7ab93824649) scored 2.343× (2.308–2.378) against 2.329× for the base entry, which is inside the noise. A second build with the dispatch frozen and no prepare-time A/B (check 03072c0ab2854c2e, 2.344×) was submitted as c663b9dfc629461b and scored 2.362× (2.327–2.397). The same file drew 2.344× as a check and 2.362× on the board, so we count the gain over the base as small: visible in the per-shape reads on the three shapes we changed, not in the headline. Later moe levers (see `../moe/ideas-tried-and-closed.md`) landed in the noise or lost; an 8-op dequant variant scored 2.222×. Two other moe candidates are covered in `lessons-learned.md`: one with a cheaper decode regressed, and one never loaded.
 
 ### Decode_layer
 
-Check 1 failed 10 of 13 cases. The new 1-token GEMV's loads had been hoisted above the point where it waits for the previous kernel, so it read an input before it was written. We dropped it. Separately, we found that the board entry feeds the router a BF16-rounded activation at 8 tokens and below, where SGLang keeps FP32. A compliant v3 (an unrounded FP32 copy for the router, falling back to a separate FP32 GEMV, never BF16) was written, and at the time of these notes it had only been checked for syntax.
+Check 1 passed only 10 of its 13 tests; the three one-token tests failed. The new 1-token GEMV's loads had been hoisted above the point where it waits for the previous kernel, so it read an input before it was written. We dropped it. Separately, we found that the board entry feeds the router a BF16-rounded activation at 8 tokens and below, where SGLang keeps FP32. A compliant v3 (an unrounded FP32 copy for the router, falling back to a separate FP32 GEMV, never BF16) scored 2.072× (2.041–2.103), 13/13, as a check and 2.059× when submitted (a006fb26786d4c98). A version with the new moe changes (v4) scored 2.090× as a check and 2.083× when submitted (8aa6ec880e394012), which is the same as v3 within noise. We then withdrew 9b0d0973f11a4758.
 
 ### What other teams' write-ups added
 
@@ -170,6 +172,8 @@ Passed along as ideas only:
 - Emulating exp2 on the FMA pipe in attention is slower, by 24 to 105 µs.
 
 ## What the numbers said was left
+
+These are the midday Nov 4 numbers.
 
 - bf16: the gap to the board's roughly 1.55× cluster and the 1.69× leader sits at m = 128 and 256 (1.17 to 1.23 per load). Our clean-room CUDA kernels are far behind the borrowed file except at m ≤ 8 and on the router.
 - Gaps to first place: attention 2.605× against 3.339× (a factor of 1.28), moe 2.329× against 2.764× (1.19), decode_layer 2.096× against 2.540× (1.21).

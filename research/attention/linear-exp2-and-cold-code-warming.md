@@ -6,7 +6,7 @@ Baseline throughout: vjeux's entry run unchanged, sha256 cf04259b008238a7cdb3eb7
 
 ## Validation without a GPU
 
-We had no local GPU, so every candidate went through a static route before it was allowed to use a judge run:
+We had no local GPU that could run these sm_90a kernels, so every candidate went through a static route before it was allowed to use a judge run:
 
 - NVRTC 13.2 (nvcc's front end, from the NVIDIA pip wheel) compiles the device code to PTX for compute_90a, instantiating all 20 `attn_kernel<L, FLAT, MODE>` variants.
 - `ptxas -arch=sm_90a` (12.9) reports registers, spills, stack and wgmma warnings.
@@ -74,18 +74,18 @@ The base-run values for each shape, and the run-to-run difference between them, 
 |-|-|-|
 |d1s|5.2|5.1|
 |d1f|11.4|11.0|
-|d16s|8.7|not recorded|
+|d16s|8.7|8.4|
 |d16f|90.6|86.5|
-|d32s|10.8|not recorded|
+|d32s|10.8|10.2|
 |d32f|170.3|165.5|
 |v1s|7.0|6.8|
 |v1f|14.2|14.2|
-|v16s|11.7|not recorded|
+|v16s|11.7|11.5|
 |v16f|101.1|102.1|
-|v32s|15.0|not recorded|
+|v32s|15.0|14.7|
 |v32f|183.6|186.2|
 
-Base run 1 is job c20df44ab71d4005 and base run 2 is job 705c7dd9f34446dd. For check 2 only the batch-1 shapes and the four controls were recorded. The controls ran 0 to about 1% above base run 1 (v16f and v32f about +1%, d16f and d32f unchanged), and d1s and v1s did not drop by 0.3 us, so there was no warming effect to find. The reading rule we set beforehand was a drop of at least 0.3 us on both d1s and v1s after dividing out the control offset.
+Base run 1 is job c20df44ab71d4005 and base run 2 is job 705c7dd9f34446dd. We read only the batch-1 shapes and the four controls for check 2; the other sliding rows are listed for completeness. The controls ran 0 to about 1% above base run 1 (v16f and v32f about +1%, d16f and d32f unchanged), and d1s and v1s did not drop by 0.3 us, so there was no warming effect to find. The reading rule we set beforehand was a drop of at least 0.3 us on both d1s and v1s after dividing out the control offset.
 
 Two explanations remain open: the finalize may simply not be cold enough on these shapes for warming to matter, or the dry pass may not overlap the counter window well enough. We could not tell them apart without a profiler, so we did not extend the idea.
 

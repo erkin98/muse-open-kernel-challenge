@@ -49,7 +49,7 @@ One moe candidate (c2, job 10650a018faf4076) built its `load_inline` extension n
 
 ### Loads can be hoisted above a PDL wait
 
-The first check of a new 1-token GEMV for decode_layer failed 10 of 13 cases. The compiler had moved the kernel's loads above the point where it waits for the previous kernel, so it read an input that had not been written yet. This was a candidate of ours and we dropped it. `replay-race-hazards.md` explains why `ld.global.nc` is a likely route for this.
+The first check of a new 1-token GEMV for decode_layer failed its three one-token tests (10 of 13 passed). The compiler had moved the kernel's loads above the point where it waits for the previous kernel, so it read an input that had not been written yet. This was a candidate of ours and we dropped it. `replay-race-hazards.md` explains why `ld.global.nc` is a likely route for this.
 
 ### Read the spec before dropping a design on memory-model grounds
 
@@ -57,4 +57,4 @@ We dropped the Triton pattern in which the last block to finish folds the split-
 
 ### Check every borrowed file against the precision rules
 
-The decode_layer board entry (job 9b0d0973f11a4758, 13 of 13 cases passing) feeds the router a BF16-rounded activation at T ≤ 8 tokens. SGLang keeps that activation in FP32 there, so by our reading of the precision rule the entry is out of bounds, even though the judge's tolerance did not flag it. We wrote a compliant v3 with an unrounded FP32 copy for the router, falling back to a separate FP32 GEMV and never to BF16. At the time of these notes it had been syntax-checked and nothing more. `challenge-rules-as-we-read-them.md` has the rule.
+The decode_layer board entry (job 9b0d0973f11a4758, 13 of 13 cases passing) feeds the router a BF16-rounded activation at T ≤ 8 tokens. SGLang keeps that activation in FP32 there, so by our reading of the precision rule the entry is out of bounds, even though the judge's tolerance did not flag it. We wrote a compliant v3 with an unrounded FP32 copy for the router, falling back to a separate FP32 GEMV and never to BF16. It then passed the judge as a check (job f6918aa1415a469a, 2.072×, 13 of 13) and went in as the replacement entry (a006fb26786d4c98, 2.059×), after which we withdrew the old one. `challenge-rules-as-we-read-them.md` has the rule.

@@ -1,6 +1,6 @@
 # Ideas tried and what they returned
 
-Here is every attention idea we measured or ruled out on paper, with its result, followed by our ranking of the headroom that is left.
+This file lists every attention idea we measured or ruled out on paper, with its result, followed by our ranking of the headroom that is left.
 
 The base is vjeux's public entry (Apache-2.0), which scored 2.605x when we ran it unchanged. Our best file, check 4 (job 8c9a79b3381c4707), reached 2.6211x. Almost all of that comes from the base; our own contribution is the two small changes marked "kept" in the table below. Per-shape numbers for the best file are in [cost-model-and-breakdown.md](cost-model-and-breakdown.md), and a short list of failed ideas is in [notes/attention.md](../../notes/attention.md).
 
@@ -15,12 +15,12 @@ These are why we never tried skipping or averaging the low-attention tail keys, 
 |idea|where it applies|result|effect on score|status|
 |-|-|-|-|-|
 |Redesign the heavy full gather to put more bytes in flight per SM|d16f, d32f, v16f, v32f (53% of the score)|not built; arithmetic and later experiments make it doubtful (see cost-model file)|up to +6% only if the random-row ceiling is near 4.5 TB/s, else about +1%|open, new design|
-|Shorten the sliding chain (clusters, one-tile, cooperative barrier, a PDL cap of 128, cold-code warm-up)|six sliding shapes (32.5%)|lost or inside noise, in public attempts and in our checks; a latency-chain study ended negative|0|closed|
+|Shorten the sliding chain (clusters, one-tile, cooperative barrier, cold-code warm-up)|six sliding shapes (32.5%)|clusters, a one-tile split and a cooperative grid barrier lost in another team's judged attempts; cold-code warm-up lost in our check 2; a latency-chain study ended negative|0|closed|
 |Bit-trick exp2 producing e4m3 P codes directly|v16f, v32f|job 24a52be614264969: v16f 101.0 to 101.1 us, v32f 184.1 to 183.6 us, inside noise|0|measured, dropped|
 |Packed half2 softmax and FP16 QK^T at 8 tokens|v16f, v32f|SASS shows 5 instructions per pair, same as the current code|0|dropped, static|
 |Four workspace copies for decode 1 sliding|d1s|job 66be38f978b54004: d1s 5.53 us against 4.94 to 5.17 for the base|negative|measured, dropped|
 |128-byte bulk copy per KV row|heavy full shapes|copy-op rate loses elsewhere; needs a proxy fence and a replay-race soak we could not run|0|dropped|
-|Exact-key tuned overrides|v32s, d1f|equivalent to a regime rule; kept (two exact keys)|0|assessed, kept|
+|Exact-key tuned overrides|v32s, d1f|both come with the base file. The d1f entry gives decode 1 full the plan the file already uses for single-request 8-token calls, so it is a regime rule in effect. The v32s entry is an isolated key whose setting matches the file's own formula for 16 to 23 requests; we did not measure its neighbours|0|assessed, kept (two exact keys)|
 |L2 prefetch-size hint on the K/V row copies|heavy full shapes|redundant by construction, see below|0|dropped|
 |Flat q_len 8 edits (key range and segment list built in one warp, e4m3 query tile written straight from raw rows, finalize run twice so the first pass warms the code)|v16f, v32f, v1f|check 3, job 04aae1ba8df8488f, submitted as 0140d9facd2a410d|+0.3 to 0.4%|kept|
 |BF16 vector reductions of split-KV partials|v1f only|check 4, job 8c9a79b3381c4707|+0.15%|kept|
@@ -58,7 +58,7 @@ It would have cost one token in the copy helper plus a static gate, with no race
 |rank|idea|best case|evidence|
 |-|-|-|-|
 |1|heavy full gather redesign|+6% if the H200 random-row ceiling is near 4.5 TB/s, about +1% if near 4.1|every tested lever failed or is noise; the ceiling is unmeasured|
-|2|shorten the sliding chain by 10%|+3.4%|clusters, one-tile, cooperative barrier, nc=4 on d1s, PDL128 and warm-up all lost or tied|
+|2|shorten the sliding chain by 10%|+3.4%|clusters, one-tile and a cooperative barrier lost in another team's attempts; nc=4 on d1s and warm-up lost in our checks|
 |3|more trimming of the q_len 8 flat full shapes (v16f, v32f, 26% of the score)|about +0.5%|already banked: flat q8 variant and BF16 vector reductions; exp tricks changed nothing, which says MUFU is not the limiter|
 |4|per-shape launch keys at the exact scored sizes|+0.3 to 1%|organizers warned about per-shape variants; a rules risk, and the sweep found nothing to gain anyway|
 |5|more judge draws of slightly different bytes, keep the best|+0.5 to 0.8%|not a speed gain; it only shifts the number inside the noise|

@@ -2,7 +2,7 @@
 
 This file digests the public alygg77/okc-muse-spark-kernels repo at commit 6cae49a639ee6d14b929a5fd4a63c627f96d7dc0: what its kernels change against the vjeux base, how its judge runs compare with ours, every measured win and closed lever in its documents, and the timing method it publishes.
 
-It is the best-documented public repo for the muse boards because it ships judge numbers and a long list of negatives. Everything here is described in our own words. We did not copy or port any of its code. We read its documents in full and read its kernels only as a diff against vjeux's f35a41e, for understanding. Licence: Apache-2.0, plus nathenfernandes Fernandes's MIT text in a licences folder.
+It is the best-documented public repo for the muse boards because it ships judge numbers and a long list of negatives. Everything here is described in our own words. We did not copy or port any of its code. We read its documents in full and read its kernels only as a diff against vjeux's f35a41e, for understanding. Licence: Apache-2.0, plus nathenfernandes's MIT text in a licences folder.
 
 ## What is in the repo
 
@@ -10,7 +10,7 @@ It is the best-documented public repo for the muse boards because it ships judge
 |-|-|
 |README.md, RESULTS.md, results.json|Read in full. results.json numbers are exact, case fields are condensed into labels|
 |docs/NEGATIVE_RESULTS.md (31 KB), docs/H200_MEASURED_FACTS.md (32 KB)|Read in full|
-|Its index text file, NOTICE, LICENSE, the nathenfernandes Fernandes licence|Read. Credits and licence texts|
+|Its index text file, NOTICE, LICENSE, the nathenfernandes licence|Read. Credits and licence texts|
 |timing_kit/README.md|Read in full|
 |timing_kit/paired.py, pool_runs.py, stalls.py, __init__.py|Method only, not saved|
 |kernels/ (attention 155 KB, bf16 383 KB, decode_layer 840 KB, moe 326 KB, prefill 293 KB)|Diffed against vjeux f35a41e|
@@ -23,7 +23,7 @@ Moe (about +112 and -8 lines):
 
 - KPERM3. Activation loads are re-indexed to a permuted K order. The per-stage scale fetch becomes one 8-byte load per lane per stage, built once per stage (the old loop reloaded per load group). At prepare time the NVFP4 codes are permuted along K inside every 256-K stage, the gate/up row order is re-mapped so the phase-A epilogue still stores at the usual positions, and the scale table is permuted to match.
 - A helper-warp change in the 9-to-16-token build: an alternate source in which the helper (producer) warp is physical warp 0, made by rotating the logical thread index. It has no separate number.
-- A per-thread CUDA primary-context bind before the kernel function, credited to Matsvei.
+- A per-thread CUDA primary-context bind before the kernel function, credited to a poster on a second public code-sharing site.
 - Documented gain: +1.25% of the moe board.
 
 Decode_layer (about +2,740 and -30 lines). The base is untouched except small hooks, and everything else is appended as layered overrides of prepare, the after-attention path and the kernel function:
@@ -46,7 +46,7 @@ Bf16 (outside our two main problems, +2,618 lines): nathenfernandes's MIT routes
 ## Router feed at T <= 8
 
 - In the vjeux base (and so in our entry before we fixed it), boundary 1 computes the normalised activation in FP32 but stores only a BF16 copy. The pooler and router both read that copy at every T, and the router uses BF16 hi plus lo weight rows with FP32 accumulation. At T <= 8 the router input is therefore BF16-rounded.
-- alygg77 also writes an FP32 copy of the normalised activation at T <= 8, and a later override recomputes it exactly because an earlier version still had about 2e-3 relative error. The router runs as an FP32 by FP32 GEMV, or as the interleaved FP32 stage in the fused pooler at T = 1. Its documents say SGLang's reference feeds the router an FP32 activation and FP32 weights at T <= 8 and BF16 plus hi/lo above 8 tokens. Matsvei found this and alygg77 checked it against the task baseline.
+- alygg77 also writes an FP32 copy of the normalised activation at T <= 8, and a later override recomputes it exactly because an earlier version still had about 2e-3 relative error. The router runs as an FP32 by FP32 GEMV, or as the interleaved FP32 stage in the fused pooler at T = 1. Its documents say SGLang's reference feeds the router an FP32 activation and FP32 weights at T <= 8 and BF16 plus hi/lo above 8 tokens. a poster on a second public code-sharing site found this and alygg77 checked it against the task baseline.
 - The live rules let the router's FP32 weights run as BF16 hi plus lo at any batch size. Their line on activations (stay BF16 or FP32 wherever SGLang's kernel keeps them in BF16) is worded for BF16 sites and does not name the FP32 router input, so reading it as meaning that FP32 stays FP32 where SGLang keeps FP32 is our inference. Our entry passed 13 of 13 judge tests with the rounded input, so the tolerance accepted it, but the organisers read top entries.
 - Recommendation we followed: at T <= 8 feed the router the FP32 activation and keep the hi/lo weights. The FP32 activation is already in registers in boundary 1, so a second FP32 output costs about 2x the x-bytes on 1 to 8 rows, and alygg77 measured the interleaved version at board parity.
 - Their measured facts: the exact compliant router has a maximum absolute difference of 8.6e-6 and 7.6e-6 against FP32 F.linear, and top-8 ids are identical in 882 of 882 cases. The judge prices the FP32 router at v1 about twice as high as local runs (3.8% against 1.8%).

@@ -1,6 +1,6 @@
 # muse_decode_layer: judged runs
 
-The decode-layer kernel scored between 2.072x and 2.105x in the passing runs below, which also show how much of the per-shape movement is noise.
+The decode-layer kernel scored between 2.059x and 2.105x in the passing runs below, which also show how much of the per-shape movement is noise.
 
 ## Shapes
 
@@ -23,14 +23,15 @@ The MoE uses its small builds up to T = 16 and its wgmma build from T = 17. That
 |-|-|-|-|-|
 |vjeux file, check|7d885f57d219428f|2.105x, 13/13|2.074-2.137x|10.74 ms|
 |vjeux file, board entry|9b0d0973f11a4758|2.096x, 13/13|2.065-2.127x|10.79 ms|
-|first attempt (compressed GEMV, "v2")|a44e46117b9449f8|failed, 10/13|-|-|
+|first attempt (compressed GEMV, "v2")|a44e46117b9449f8|failed the tests, 10/13 passed|-|-|
 |v3, FP32 router input up to 8 tokens|f6918aa1415a469a|2.072x, 13/13|2.041-2.103x|10.92 ms|
+|v3, submitted|a006fb26786d4c98|2.059x, 13/13|2.028-2.090x|10.99 ms|
 |v4moe, v3 plus the MoE byte cuts|042deb1ca7a94df6|2.090x, 13/13|2.059-2.121x|10.82 ms|
-|v4moe, submitted|8aa6ec880e394012|2.083x|not recorded|not recorded|
+|v4moe, submitted|8aa6ec880e394012|2.083x, 13/13|2.052-2.114x|10.86 ms|
 
 The submitted file is v4moe (sha256 prefix 706088bb, from the repo's results table). It scored 2.083x as a fresh judge draw. That is below the old board entry's 2.096x. The old entry fed the router a BF16-rounded input at 8 tokens or fewer where SGLang keeps FP32 (see `fp32-router-input-rule.md`), and the submitted file does not.
 
-We did not record why v4moe was chosen over v3 for the final submit. The two checks scored 2.090x and 2.072x, and the MoE port in v4moe measured as net zero within noise (see `moe-port-and-other-ideas.md`).
+v3 went in first (a006fb26786d4c98, 2.059x) and the old entry was withdrawn once that run had posted. v4moe went in on Nov 5, when we submitted every kernel again. Its device code differs from v3's only at 17 or more tokens, so it was a fresh draw of mostly the same kernel, and the board keeps the better of the two runs. The two checks scored 2.090x (v4moe) and 2.072x (v3), and the MoE port in v4moe measured as net zero within noise (see `moe-port-and-other-ideas.md`).
 
 ## Speedup per case
 

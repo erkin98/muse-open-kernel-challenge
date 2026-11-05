@@ -8,15 +8,15 @@ Everything below is third-party text, read from public pages. We did not click, 
 
 |Account and date|Claim|Public detail|Our assessment|
 |-|-|-|-|
-|Anshul (@anshulcreates), Oct 24|Router GEMV in Triton: m = 1 from 10.3 to 5.1 us, m = 8 from 26.3 to 11.9 us. Total 1.055x|A technique description and an official-check screenshot. No repo|Medium to high reliability. Our router is already 3.84 and 5.19 us|
-|Aditya (@AdiverseK), Oct 31|bf16 1.569x|A five-point outline. No repo, no screenshot|Plausible outline. Number equals keell0renz's submitted 1.5690 (coincidence or reuse, our inference). The gap decomposes into the rs128 design|
-|Nivas Thummala (@NivasT49781), Oct 30|bf16 1.595x with a 12-bit pack, MoE 2.382x with a MULDEC graft|Three lines, no explanation|Low. MULDEC has no public mechanism|
-|Karthikeyan Sukumaran (@karthikeyansuku), Oct 29 to Nov 2|MoE 2.017x, later 2.211x. Better NVFP4 dequantisation|No code or mechanism|Below our 2.329x. No reason to chase|
-|Dhruva (@utterwqlut), Nov 2|A first GPU kernel reaching 1.3x|Three ideas; one reply with a hint|Sits below our entries|
+|@anshulcreates, Oct 24|Router GEMV in Triton: m = 1 from 10.3 to 5.1 us, m = 8 from 26.3 to 11.9 us. Total 1.055x|A technique description and an official-check screenshot. No repo|Medium to high reliability. Our router is already 3.84 and 5.19 us|
+|@AdiverseK, Oct 31|bf16 1.569x|A five-point outline. No repo, no screenshot|Plausible outline. Number equals keell0renz's submitted 1.5690 (coincidence or reuse, our inference). The gap decomposes into the rs128 design|
+|@NivasT49781, Oct 30|bf16 1.595x with a 12-bit pack, MoE 2.382x with a MULDEC graft|Three lines, no explanation|Low. MULDEC has no public mechanism|
+|@karthikeyansuku, Oct 29 to Nov 2|MoE 2.017x, later 2.211x. Better NVFP4 dequantisation|No code or mechanism|Below our 2.329x. No reason to chase|
+|@utterwqlut, Nov 2|A first GPU kernel reaching 1.3x|Three ideas; one reply with a hint|Sits below our entries|
 |RohanArun (@RohanArun), Oct 24 to Nov 3|Top 2 in 7 hours; about +5% from hyper-parameter search; a statistical model plus a Lean-based pruner|None. No code, no mechanism|Low. Not traceable to a shape, board or mechanism|
 |An unattributed note on isolated wins|cgemv gains that died in the full decode layer|No public text found|Used as a rule|
 
-## Anshul's router GEMV post (Oct 24, quoted again Oct 27)
+## @anshulcreates's router GEMV post (Oct 24, quoted again Oct 27)
 
 The text, plus an attached official-check screenshot: total 1.055x over SGLang, 95% interval 1.039 to 1.071, 4,580 us, 9 of 9 passed (https://x.com/anshulcreates/status/2114040355196686371). Router rows: decode 1 (m = 1) 10.3 us stock against 5.1 us his (2.03x); verify 1 (m = 8) 26.3 against 11.9 us (2.22x). Decode 16 and decode 32 show 1.09x each and verify 16 shows 1.07x, while verify 32 shows 0.93x (17.4 against 18.7 us). All other projection rows are within about 2% of 1.0x. His own forecast was 1.10x to 1.15x.
 
@@ -24,27 +24,27 @@ His description: a Triton kernel with 256 programs, one per output, weights stre
 
 For us: the router is about 0.10 of the bf16 pull, and the total he reached is only 1.055x, which agrees. Our entry already has a small-m router path and a fused pooler-router. His Triton router lost our A/B at every m. The headroom from 3.84 and 5.19 us to his 1.8 us bound is untested.
 
-## Aditya's bf16 1.569x (Oct 31)
+## @AdiverseK's bf16 1.569x (Oct 31)
 
-The post, as a five-point list (https://x.com/AdiverseK/status/2116519029494149293): bf16 is memory-bound at batch 1 to 32; weights are stored losslessly in about 12 bits (exponents cluster) and decoded in the kernel for about 25% less traffic; the base is open-source kernels from alygg77, vjeux and Nathan Fernandes; for batches 128 to 256 there is his own TMA and wgmma kernel plus pinned cuBLASLt configs plus a special FP32 router path; and an auto-tuner times every option per layer and batch size under CUDA graphs. No replies, no repo, no link.
+The post, as a five-point list (https://x.com/AdiverseK/status/2116519029494149293): bf16 is memory-bound at batch 1 to 32; weights are stored losslessly in about 12 bits (exponents cluster) and decoded in the kernel for about 25% less traffic; the base is open-source kernels from alygg77, vjeux and nathenfernandes; for batches 128 to 256 there is his own TMA and wgmma kernel plus pinned cuBLASLt configs plus a special FP32 router path; and an auto-tuner times every option per layer and batch size under CUDA graphs. No replies, no repo, no link.
 
-Public sources for the parts he credits: nathenfernandes Fernandes's MIT bf16 repo (a team's run of its v18 passed at 1.532x in a check and scored 1.521x, per forum thread 5); pinned cuBLASLt algorithms with rebuild, verify and fall-back self-tests, described in prose in the bigboateng README and quoted in forum thread 11; forum thread 125 mentions cuBLASLt algo-66 pins for prefill and the o-projection row-major layout as known levers on a 1.55-class file.
+Public sources for the parts he credits: nathenfernandes's MIT bf16 repo (a team's run of its v18 passed at 1.532x in a check and scored 1.521x, per forum thread 5); pinned cuBLASLt algorithms with rebuild, verify and fall-back self-tests, described in prose in the bigboateng README and quoted in forum thread 11; forum thread 125 mentions cuBLASLt algo-66 pins for prefill and the o-projection row-major layout as known levers on a 1.55-class file.
 
 Arithmetic. The weighted SGLang baseline for bf16 follows from RohanArun's numbers as about 4,830 us, which matches another team's official record. So our 1.491x is about 3,240 us, 1.569x is about 3,079 us, a gap of about 160 us, and 1.613x is about 2,995 us. His gains over a vjeux-based file must come from his points 4 and 5, which nobody has published.
 
 Rule reading. An auto-tuner that times every option per exact (layer, batch) reads close to the live ban on tuning that only works at the scored sizes, if the pick is a lookup on exact keys. His claim is not evidence that it is allowed. In our hands it was also closed in practice: a re-tuned bf16 dispatcher predicted +6.6% locally and returned -5% on the judge (forum thread 147).
 
-## Nivas Thummala: 12-bit pack and MULDEC (Oct 30)
+## @NivasT49781: 12-bit pack and MULDEC (Oct 30)
 
-Three lines and a tag (https://x.com/NivasT49781/status/2116231340161188087), with no explanation of either term. Searches on X find MULDEC only in this post, a web search finds nothing, and the forum files we saved contain no match for MULDEC, 1.569, 1.595, 2.382 or 2.017. A 12-bit pack is a lossless exponent-clustering scheme, which the live rules explicitly allow, and the idea appears in three of these posts (Aditya, Nivas, Dhruva), which suggests it came from a common public source. The vjeux file we build on already has it. MULDEC could mean a multiply-based decoder, but nothing confirms that, so we treat it as unknown. If real and transferable, 2.382x over our 2.329x is about 2.3%. Our moe entry already decodes FP4 by field placement and the E4M3 scales by a byte permute plus an integer multiply.
+Three lines and a tag (https://x.com/NivasT49781/status/2116231340161188087), with no explanation of either term. Searches on X find MULDEC only in this post, a web search finds nothing, and the forum files we saved contain no match for MULDEC, 1.569, 1.595, 2.382 or 2.017. A 12-bit pack is a lossless exponent-clustering scheme, which the live rules explicitly allow, and the idea appears in three of these posts (@AdiverseK, @NivasT49781, @utterwqlut), which suggests it came from a common public source. The vjeux file we build on already has it. MULDEC could mean a multiply-based decoder, but nothing confirms that, so we treat it as unknown. If real and transferable, 2.382x over our 2.329x is about 2.3%. Our moe entry already decodes FP4 by field placement and the E4M3 scales by a byte permute plus an integer multiply.
 
-## Karthikeyan Sukumaran: MoE 2.017x to 2.211x
+## @karthikeyansuku: MoE 2.017x to 2.211x
 
 The Nov 2 post (https://x.com/karthikeyansuku/status/2117243370808508918) says better NVFP4 dequantisation, fused kernels and scheduling tweaks, validated on a rented Nebius H200, still a long way from the top. A later post (https://x.com/karthikeyansuku/status/2117772776161558714) gave 2.211x on the MoE board with no detail. Earlier posts: 1.82x to 1.92x on Oct 30, and an Oct 29 post (rank 613 to 438, 1.4x to 1.8x, a dequantisation path, with a write-up promised after the challenge). These are all below our entry.
 
-## Dhruva and the hand-written question
+## @utterwqlut and the hand-written question
 
-Dhruva's Nov 2 post (https://x.com/utterwqlut/status/2117234769746657540) listed three ideas for a first GPU kernel at 1.3x. The only reply with content, from @bitcoinduke, says he hit the same wall around 1.33x on the projections, that about 1.6x comes from hand-written per-shape CUDA kernels because split-K tuning still pays for an extra reduce launch, and that judged times per shape should be compared. A separate thread by Jino Rohit on Oct 26 (https://x.com/jino_rohit/status/2114693263299170774) asked whether anyone was hand-writing kernels. Replies reported about 1.204x and about 1.3x hand-written, with no technique named. By those numbers hand-written work stalled around 1.2x to 1.3x on a board they did not name, far below our entries.
+@utterwqlut's Nov 2 post (https://x.com/utterwqlut/status/2117234769746657540) listed three ideas for a first GPU kernel at 1.3x. The only reply with content, from @bitcoinduke, says he hit the same wall around 1.33x on the projections, that about 1.6x comes from hand-written per-shape CUDA kernels because split-K tuning still pays for an extra reduce launch, and that judged times per shape should be compared. A separate thread by @jino_rohit on Oct 26 (https://x.com/jino_rohit/status/2114693263299170774) asked whether anyone was hand-writing kernels. Replies reported about 1.204x and about 1.3x hand-written, with no technique named. By those numbers hand-written work stalled around 1.2x to 1.3x on a board they did not name, far below our entries.
 
 ## RohanArun
 
@@ -84,4 +84,4 @@ The getsupers experiments page (https://app.getsupers.com/experiments) is a host
 
 ## A note on isolated wins that died in the full layer
 
-A note circulated saying cgemv improved the QKV and output projections but only applied to 2 of 12 workloads, with decode-layer scores of 2.1898 to 2.2007, 2.1704, 2.1859, one GEMM at 2.219 and 2.1981 after stacking. We could not find its text anywhere public. Two candidate origins by inference: VkaZas's team (alygg77 lineage), whose forum post lists a T = 1 unpooler and a T = 1 QKV as cgemv and a pinned tuner pick, with a decode_layer board speedup of 2.218; or the keell0renz team, whose decode climb from 2.1815x to 2.2664x brackets every number in the note and who had a lane porting standalone GEMMs. Against the second, their README and LESSONS never mention cgemv, and their bf16 file only has a cgemv name for an m = 1 12-bit GEMV. We cannot choose. The note's lessons match what we measured: our own cgemv check failed on 10 of 13 shapes, standalone wins do not carry into the layer, an autotuner's gains may be noise, and stacking two proven wins can fail.
+A note circulated saying cgemv improved the QKV and output projections but only applied to 2 of 12 workloads, with decode-layer scores of 2.1898 to 2.2007, 2.1704, 2.1859, one GEMM at 2.219 and 2.1981 after stacking. We could not find its text anywhere public. Two candidate origins by inference: VkaZas's team (alygg77 lineage), whose forum post lists a T = 1 unpooler and a T = 1 QKV as cgemv and a pinned tuner pick, with a decode_layer board speedup of 2.218; or the keell0renz team, whose decode climb from 2.1815x to 2.2664x brackets every number in the note and who had a lane porting standalone GEMMs. Against the second, their README and LESSONS never mention cgemv, and their bf16 file only has a cgemv name for an m = 1 12-bit GEMV. We cannot choose. The note's lessons match what we measured: our own cgemv check failed its three one-token tests (10 of 13 passed), standalone wins do not carry into the layer, an autotuner's gains may be noise, and stacking two proven wins can fail.

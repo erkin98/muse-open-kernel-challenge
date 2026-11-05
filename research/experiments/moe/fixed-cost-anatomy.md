@@ -34,7 +34,7 @@ Runs of the base code include c663b9dfc629461b (2.362x, CI 2.327-2.397), 03072c0
 
 In microseconds the base's two board-config runs spread d1 5.6%, d16 2.0%, d32 3.1%, v1 11.7% (61.5 to 69.2 us over four runs), v128 2.4% and v256 2.0%. SGLang's time moves with the node and the routing, so the paired ratio is far more stable than our microseconds. d32 read the same to about 0.05% across four runs, so a 0.5% move there is visible. d16 needs about 3% and v1 about 5%.
 
-A caveat we learned the expensive way: a run that carries a large diagnostic payload is not a clean baseline. The extra compiled modules and arms shifted even unchanged shapes. d32 ran v3 code in the two later diagnostic runs and read 1.650 and 1.654 instead of 1.667 to 1.668, and v256 read 2.85 and 2.852 against 2.866 to 2.898.
+A caveat we learned the expensive way: a run that carries a large diagnostic payload is not a clean baseline. The extra compiled modules and arms shifted even unchanged shapes. d32 ran v3 code in the two later diagnostic runs and read 1.651 and 1.654 instead of 1.667 to 1.668, and v256 read 2.85 and 2.852 against 2.866 to 2.898.
 
 ## The diagnostic run (job 36fb48423c7d4e62)
 

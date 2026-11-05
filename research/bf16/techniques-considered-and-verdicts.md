@@ -9,9 +9,9 @@ Verdict words: "in the file" means it runs in the file we submitted, which is th
 |Technique|Evidence|Verdict|
 |-|-|-|
 |CUDA GEMV with weights repacked into MMA fragment order, 16 bytes per lane, software-pipelined, in-CTA K-split|Third-party: pooler at m=1 in 17.1 µs (3.9 TB/s). Our estimate against v3: pooler -4.1, qkv_gate -2.8, unpooler slice -2.1, unpooler m=16 -0.7, o -0.5 µs, about +0.12x. Applying nathenfernandes-level pooler kernels alone to v3 would give 1.273x|In the file (vjeux's kernels). Our own clean-room CUDA version reached about 1.25x overall|
-|Triton GEMV and split-K kernels (our v3)|About 3.3 TB/s on pooler, 4.1 on o; two public teams report the same ~3 TB/s Triton ceiling|1.139x; superseded|
+|Triton GEMV and split-K kernels (our v3)|About 3.3 TB/s on pooler, 4.1 on o (kernel time); thethings reports the same ~3 TB/s Triton ceiling|1.139x; superseded|
 |Software pipelining of weight loads (issue the next batch before the current MMA)|Third-party: about 2 µs on qkv_gate at m=1|Used by the public 1.5x entries; we did not check it in the file|
-|More bytes in flight per SM (BN 32, BK 128, 4 stages)|Within noise on the RTX 3050 Ti, which cannot show the effect. Should matter on the H200 by Little's law (inference)|Not verified on the H200|
+|More bytes in flight per SM (BN 32, BK 128, 4 stages)|Within noise on the RTX 3050 Ti, which cannot show the effect. Little's law said it should matter on the H200 (inference)|Used in v3; its pooler at decode 1 still ran at cuBLAS parity on the judge (21.2 against 21.1 µs)|
 |Autotune in `prepare()` with cold-L2 graph replays|The vjeux file does this per layer and m, behind an FP64 self-test|In the file|
 |Dispatch by ranges of m with masked runtime-m kernels|Guards against overfitting the scored m values|Recommended; see judge-environment-and-validation.md|
 |GemLite-style kernel families (GEMV at M=1, split-K GEMM at M=2 to 32, plain GEMM above, persistent split-K, per-GPU cached autotune; https://github.com/mobiusml/gemlite)|Quantized weights, so its dequantization does not transfer. Its atomic split-K needs a zeroed output each call. BF16 outputs were 5 to 7% slower at M=1 to 64 from an FP32 fallback in its atomic add|Design reference only|
@@ -26,7 +26,7 @@ Verdict words: "in the file" means it runs in the file we submitted, which is th
 |Fixed 3-bit exponent code over only 8 exponents|About 1.3% escapes in our CPU measurement|Too many escapes to patch cheaply|
 |Entropy or variable-length coding|Entropy is 1.5 bits under the fixed code, but decode cost in a GEMV loop is unknown|Not tried|
 |Compressing the router's hi/lo pair|Third-party: slower, the router is too small and latency-bound|Tried by others, lost|
-|Compression at m=32 on qkv_gate and o; unpooler slice|Third-party: slower (the slice by +2%)|Not used there|
+|Compression at m=32 on qkv_gate and o; unpooler slice|Third-party: slower (the slice by +2%). The submitted file does use the 12-bit path at m=32 on all four dense layers and for the unpooler slice at m=8, and it beats SGLang there (1.15 to 1.47x at decode 32)|Third-party claim not reproduced; the path is in the submitted file|
 |12-bit weights unpacked inside a wgmma GEMM at m=128|alygg77 lost 2.4 to 4.1 µs on o and unpooler and 12 µs on pooler; our rs128 build took 1.6 to 2x the raw replay time of the existing picks|Tried, lost|
 
 ## Router
@@ -52,7 +52,7 @@ Verdict words: "in the file" means it runs in the file we submitted, which is th
 |Last-block counter reduction in Triton|Memory-model argument says an `acq_rel` RMW chain plus block barriers suffices; Triton has no device fence and its lowering is unverified. Worth +0.03 to 0.04x|Parked|
 |Atomic split-K into the output|Needs a zeroed output every call, so a memset node|Avoid|
 |memset or `zero_()` in `kernel_fn`|A forum thread reports a 1.7 µs memset node followed by a ~13 µs gap on H100|Avoid; make workspaces in `prepare()`|
-|Float `red.add` into a self-zeroing workspace|Our notes record failures at about 1 in 10 to 20 thousand replays|Avoid|
+|Float `red.add` into a self-zeroing workspace|A forum report, not our measurement, of failures at about 1 in 10 to 20 thousand replays|Avoid|
 |Persistent stream-K GEMV with a TMA ring|Third-party: 1.3 µs handshake, 13.0 against 12.2 µs|Skip|
 |PDL between our own kernels|At most 0.5 to 1 µs per extra kernel; presence in Triton 3.8 unverified|Prefer one kernel|
 |L2 prefetch (`cp.async.bulk.prefetch.L2`)|Third-party: never helped|Skip|
@@ -67,8 +67,8 @@ Verdict words: "in the file" means it runs in the file we submitted, which is th
 |TMA + wgmma kernels (gq, gqx) for qkv_gate and pooler at m=128|Beat cuBLAS in the file: qkv_gate 18.34 against 20.29, pooler 24.86 against 28.96 µs raw replay|In the file|
 |CUTLASS kernel for pooler at m=256|31.14 against 35.58 µs raw replay|In the file|
 |cuBLAS on a K-major copy of W|Picked for o at m=128 and unpooler at m=128 and 256 by small margins|In the file|
-|cuBLASLt algorithm pinning|Every configuration is algorithm id 66 on our H200 and none beat the default. Third-party: -2% best case|Tried, lost|
-|gemm90 split-K wgmma GEMM|20 to 100% slower than cuBLAS on all eight shapes|Tried, lost|
+|cuBLASLt algorithm pinning|Every configuration is algorithm id 66 on our H200 and none beat the existing pick on any shape. Third-party: about -2% best case|Tried, lost|
+|gemm90 split-K wgmma GEMM|14% to 107% slower than the existing pick on all eight shapes|Tried, lost|
 |Six more gq/gqx instantiations (bigger token tiles, two consumer warpgroups, other clusters)|All slower, for example qkv_gate m=128 at 29.6 against 18.5 µs|Tried, lost|
 |swap-AB register-A wgmma with 12-bit weights (rs128)|Pooler m=128 43 to 46.5 µs against 25 to 26|Tried, lost|
 |Third-party wgmma + TMA and swap-AB kernels|Tied or lost to cuBLAS at m=128/256; ingest-bound at ~85 GB/s per SM|Others tried, lost|

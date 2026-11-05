@@ -59,7 +59,7 @@ The long notes on these are in gemm-moe-and-compression-papers.md.
 |Astra, 2509.07506 (https://arxiv.org/abs/2509.07506)|Local HTML copy read in full (excerpt without introduction and references); OpenReview not opened|Nothing for scores. It tunes three small SGLang kernels on H100.|
 |Minimal Executable Programs, 2512.22147 (https://arxiv.org/abs/2512.22147)|See the conflict note below|Nothing for scores. Its own table shows standalone-to-integrated gaps, which supports our rule that standalone wins are not trusted until they survive the full layer.|
 |Jansen, Analyzing Optimization Variables in GPU Kernel Tuning, Leiden bachelor thesis (https://theses.liacs.nl/3374)|See the conflict note below|Nothing. Its parameter ranking comes from A100, A4000, A6000 and AMD cards.|
-|Willemsen, Tuning the tuner, Leiden PhD thesis (https://scholarlypublications.universiteitleiden.nl/handle/1887/4301430)|Abstract page only|Nothing.|
+|Tuning the tuner, Leiden PhD thesis (https://scholarlypublications.universiteitleiden.nl/handle/1887/4301430)|Abstract page only|Nothing.|
 |Kernel Tuner optimization docs (https://kerneltuner.github.io/kernel_tuner/stable/optimization.html)|Read|Nothing. Our per-range knob spaces have a handful of values, so brute force beats any search strategy.|
 |Weight-space programming blog (https://rikiyat.github.io/blog/weight-space-programming/)|Read in full|Not applicable. It is about editing network weights directly, and the name Astra there is unrelated to the kernel paper above.|
 
@@ -73,7 +73,7 @@ An earlier pass reports reading the Leiden thesis in full and sections 3 to 5 of
 |CUDA Programming Guide chapters 4.5 (programmatic dependent launch), 4.12 (async copies), 4.2 (graphs), 5.7 (memory model) (https://docs.nvidia.com/cuda/cuda-programming-guide/)|Read|Same.|
 |CUTLASS pipeline synchronisation page (https://docs.nvidia.com/cutlass/latest/media/docs/cpp/pipeline.html)|Read|Nothing beyond the above.|
 |threadFenceReduction sample (https://raw.githubusercontent.com/NVIDIA/cuda-samples/master/cpp/2_Concepts_and_Techniques/threadFenceReduction/threadFenceReduction_kernel.cuh) and NVIDIA forum thread 244413 (https://forums.developer.nvidia.com/t/is-threadfence-useful-at-all/244413)|Read|Reference pattern for the last-block ticket merge.|
-|Volkov, GTC 2010 session 2238|Saved copy|Little's law, used to explain why a first weight tile lands several microseconds after launch.|
+|GTC 2010 session 2238 (better performance at lower occupancy)|Saved copy|Little's law, used to explain why a first weight tile lands several microseconds after launch.|
 
 ## Generic tuning material we were sent
 

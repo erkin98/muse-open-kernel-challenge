@@ -50,10 +50,10 @@ The KV cache is read as random 128-byte rows (the page table is a random permuta
 |one CTA per SM on the full layer (132 instead of 264)|12 to 19% slower on the four heavy full shapes|
 |half as many splits on the sliding layer|verify 16 sliding +20%, decode 32 sliding +12%|
 |a sweep of split counts, workspace copies and finalize mode on every shape (8 files)|no setting beat the existing plan beyond noise; cooperative finalize is essential on verify 1 full (+71% without it)|
-|clusters, one-tile, cooperative barrier (public attempts, and our own checks)|lost or noise|
+|clusters, one-tile, cooperative grid barrier (another team's judged attempts, not ours)|lost|
 
 Reading one file's rows per shape works because the 12 scored shapes are timed independently: a change that touches one shape leaves the others where they were.
 
 ## What rank 10 would take
 
-Rank 10 was 3.008x (about +15% over 2.621x). Spread evenly that is 13% less time on every shape. The full shapes alone would need decode 32 full at 116 us, below the 126 us bytes floor at 4.8 TB/s; the sliding shapes alone would need decode 1 sliding at 2.3 us, below any plausible launch-plus-chain floor. So both layers have to improve at once: roughly 9% off every full shape and 20% off every sliding shape.
+Rank 10 was 3.008x (about +15% over 2.621x). Spread evenly that is 13% less time on every shape. The full shapes alone would need an 18.4% cut, which puts decode 32 full at about 136 us, only 7% above the 126 us bytes floor at 4.8 TB/s and past the 4.1 TB/s random-row ceiling we assumed. The sliding shapes alone would need a 34.5% cut, which puts decode 1 sliding at about 3.2 us, just above the 3.0 us launch-plus-chain floor we assumed. Both single-layer routes sit at or beyond what we think is possible, so in practice both layers have to improve: roughly 9% off every full shape and 20% off every sliding shape. For rank 1 the single-layer routes fall below those floors (see `research/attention/gap-to-the-leaders.md`).

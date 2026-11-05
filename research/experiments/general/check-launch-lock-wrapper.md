@@ -82,7 +82,7 @@ A duplicate does not seem to use up one of the day's check allowances. This is a
 
 ## What happened in use
 
-The ledger ended with 22 launches over about 12 hours, one of them the duplicate test. No launch was refused and none timed out waiting for the lock. In the last batch, nine checks on the attention problem were started within 12 seconds and the ledger shows them leaving one at a time, 1 to 2 seconds apart, which is what the lock should produce. That is consistent with the lock working, not proof.
+The ledger ended with 22 launches over about 12 hours, one of them the duplicate test. No launch was refused and none timed out waiting for the lock. In the last batch, eight checks on the attention problem were started within 12 seconds and the ledger shows them leaving one at a time, 1 to 2 seconds apart, which is what the lock should produce. That is consistent with the lock working, not proof.
 
 Eight runs were followed to the end through the wrapper, and all eight produced a parsed verdict, speedup, interval and test count. One quirk: in those rows the speedup field holds two numbers (for example 2.363 followed by 2.398, with the interval 2.328 to 2.398). The parser picks every number followed by a multiplication sign on the headline line, so the second is the upper end of the interval. The first is the headline.
 

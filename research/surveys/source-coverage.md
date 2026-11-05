@@ -19,16 +19,16 @@ The most useful single lesson was that only repos with judge reruns earn trust, 
 |PyTorch MoE blog and a rank-175-to-80 post|SplitK +18 to 20%; column-major 2.7 to 4.4x|Medium. FP16 Triton on Mixtral; the poster is unidentified|None. About M/32 tokens per expert means one M-tile per expert|
 |DFloat11, lszxb, ZipServ, the Reddit thread|About 11 bits per weight; fused GEMV at 80 to 90%; an 11.3-bit fixed code|High as papers. DFloat11 does not fuse decode (about 2x slower at batch 1)|None. Our 12-bit form is the cheap variant|
 |Astra, Minimal Executable Programs, Leiden thesis|Automated tuning of small SGLang kernels (1.32x, H100); a loop on PolyBench (5.29x); parameter sensitivity on A100 and AMD|Real, but off-target hardware and kernel class|None for scores|
-|Anshul's router post|Router 10.3 to 5.1 us (m = 1), 26.3 to 11.9 us (m = 8); total 1.055x|Medium to high: the only post with an official-check screenshot|None. Ours is 3.84 and 5.19 us|
+|@anshulcreates's router post|Router 10.3 to 5.1 us (m = 1), 26.3 to 11.9 us (m = 8); total 1.055x|Medium to high: the only post with an official-check screenshot|None. Ours is 3.84 and 5.19 us|
 |RohanArun's posts, PR #6, getsupers|About +5% from 2,000 experiments; a Lean pruner; a GPU queue; board scores above ours|Low: no code or mechanism; PR #6 is +35 generic lines, some wrong|None; getsupers uploads code to a third party|
-|Aditya, Nivas, Karthikeyan, Dhruva|Outlines of bf16 and moe wins|Low: no repo, no screenshot|Aditya's gap decomposes into rs128. MULDEC unknown. The other two sit below ours|
+|@AdiverseK, @NivasT49781, @karthikeyansuku, @utterwqlut|Outlines of bf16 and moe wins|Low: no repo, no screenshot|@AdiverseK's gap decomposes into rs128. MULDEC unknown. The other two sit below ours|
 |Community forum threads (42, 120, 154)|Fence, refill and replay hazards; cross-stage PDL gains zero|Medium: peer claims without a primary source; the PTX text confirms the rules in principle|Origin of our hazard rules|
-|Note on isolated wins that died in the full layer|cgemv failed in three forms|Medium; matches our own check (10 of 13 shapes failed)|Closed rule|
+|Note on isolated wins that died in the full layer|cgemv failed in three forms|Medium; matches our own check (3 of 13 tests failed, 10 passed)|Closed rule|
 |Weight-space blog|Editing network weights without training|Not applicable|None|
 |Earlier generic pastes and links (CUDA checklist, Triton guide, fused softmax part 2, Modular handbook, ENCCS reduction, KernelFoundry, Cursor's blog, 2603.29010)|Generic tuning advice; shape-specialised BF16 GEMM up to 9% over cuBLAS at small M (B200)|Triton guide unreliable (its tl.cache_read, tl.shared_memory and tl.barrier do not exist in Triton 3.9). The rest low or none. Cursor's kernel is Blackwell-only|None for scores. Cursor's per-shape tuning meets the nearby-shape rerun, so keep general fallbacks|
 |Public competitor repos (vjeux, NathenFernandes, trxphxle, Kushagrabainsla, thethings, PostTrain)|Base kernels; bf16 v18 (1.521x scored); a non-kernel FINDINGS table; cold-code warming; 128-byte row gather 3.7 against 2.3 TB/s at 64 bytes|vjeux: Apache-2.0 base. Kushagrabainsla: no licence, ideas only. thethings and PostTrain were saved and not re-read for these notes|Already absorbed|
 
-Two facts to keep straight. The name Astra in the weight-space blog and in RohanArun's posts is a model name, not the Astra kernel-tuning paper 2509.07506 (the link between the blog and Rohan is our inference). And the keell0renz decode layer sits on alygg77's code, so most of its roughly 8% gap to our decode entry is alygg77's work (+5.2%) plus their own stack (+2.6%).
+Two facts to keep straight. The name Astra in the weight-space blog and in RohanArun's posts is a model name, not the Astra kernel-tuning paper 2509.07506 (the link between the blog and RohanArun is our inference). And the keell0renz decode layer sits on alygg77's code, so most of its roughly 8% gap to our decode entry is alygg77's work (+5.2%) plus their own stack (+2.6%).
 
 ## Papers and documents
 
@@ -63,7 +63,7 @@ The forum copies we saved covered 14 of 36 threads, read in full as JSON. Thread
 
 ## What no note could verify
 
-- No mechanism is public for MULDEC, for better NVFP4 dequantisation (Karthikeyan), for Nivas's 12-bit variant, for Aditya's m = 128 and 256 kernel and tuner, for Dhruva's routing fusion, or for Rohan's Lean pruner and surrogate model. The 5% hyper-parameter-search claim cannot be traced to any shape or board.
+- No mechanism is public for MULDEC, for better NVFP4 dequantisation (@karthikeyansuku), for @NivasT49781's 12-bit variant, for @AdiverseK's m = 128 and 256 kernel and tuner, for @utterwqlut's routing fusion, or for RohanArun's Lean pruner and surrogate model. The 5% hyper-parameter-search claim cannot be traced to any shape or board.
 - The keell0renz repo has no per-step gains, no logs, no bake output showing which bf16 cell uses rs128 and no confirmed router-input precision. Whether the graphic posted for their team is theirs is open.
 - No attention-paper number was measured on an H200 by us. Our headroom bounds rest on assumptions (4.1 TB/s practical, 1.4 us fixed, 3.0 us floor, the last quoted second-hand from the forum) and are upper bounds.
 - Tile counts per CTA in the moe kernel were unmeasured, so the Stream-K collaborator cap has no evidence. The PyTorch blog's tile-index bug is a reading of the source, not a run.

@@ -24,7 +24,7 @@ How it maps to our MoE kernel (our reading, then measured on a model of the task
 
 ## Sparks of Weight-Space Programming
 
-URL: https://rikiyat.github.io/blog/weight-space-programming/, by Rikiya Takehi, Jayden Teoh, Alex Zhang and Omar Khattab (MIT CSAIL), published November 2. Their logs live at github.com/RikiyaT/lm_understand-logs, which we did not open. Everything below is the authors' own numbers.
+URL: https://rikiyat.github.io/blog/weight-space-programming/, by four authors, published November 2. Their logs live at github.com/RikiyaT/lm_understand-logs, which we did not open. Everything below is the authors' own numbers.
 
 The claim: a frontier language model can read raw network weights given as text and describe what the network does, and can write or edit weights, with no gradient descent and no training loop.
 

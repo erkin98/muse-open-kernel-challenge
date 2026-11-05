@@ -4,17 +4,17 @@ This file lists every judged run we have a record of for muse_bf16_proj, with pe
 
 ## What the entries are
 
-The bf16 file we submitted is the public vjeux solution (github.com/vjeux/okc-2026, Apache-2.0, commit f35a41e, fetched Nov 4) plus a Triton router candidate that lost our prepare-time comparison at every m, so the kernels that run are vjeux's. A line diff against the upstream file at that commit shows 104 added lines and none removed or changed: a 24-line attribution and licence notice at the top, the Triton imports, and the router candidate (two Triton kernels, launch code, and a few lines that register it as a route). The scores from the sixth row down are therefore measurements of that public base, not of kernels we wrote. The first rows are the unmodified starter and our own from-scratch tracks.
+The bf16 file we submitted is the public vjeux solution (github.com/vjeux/okc-2026, Apache-2.0, commit f35a41e, fetched Nov 4) plus a Triton router candidate that lost our prepare-time comparison at every m, so the kernels that run are vjeux's. A line diff against the upstream file at that commit shows 104 added lines and none removed or changed: a 24-line attribution and licence notice at the top, the Triton imports, and the router candidate (two Triton kernels, launch code, and a few lines that register it as a route). The scores from the fifth row down are therefore measurements of that public base, not of kernels we wrote. The first rows are the unmodified starter and our own from-scratch tracks.
 
 ## Runs
 
 |Job|What it was|Score (95% interval)|
 |-|-|-|
 |76c338ff8cc64f7b|the unmodified starter|0.908x|
-|a5ac82b328cd4734|early Triton entry, router fixed|1.150x from the judge, 1.151x when we recomputed it from the per-case table|
+|a5ac82b328cd4734|v3 as submitted to the board (same bytes as a58c6e3b903744ea below), router fixed|1.150x from the judge, 1.151x when we recomputed it from the per-case table|
 |a58c6e3b903744ea|v3: Triton, custom kernels only for BF16 at m <= 8 plus a router|1.139x (1.122 to 1.156)|
 |e80520a1edb0468b|clean-room CUDA track, best at the time|1.252x|
-|6c7a0061944e4339|submitted vjeux-based file, scored run|1.491x, rank 341 at our last look on Nov 4|
+|6c7a0061944e4339|submitted vjeux-based file, scored run|1.491x, rank 341 when it posted on Nov 4, 412 by 09:17 on Nov 5|
 |a35a24f311274d15|same file, check run (sha256 prefix 1a2bf6ba407a)|1.520x (1.497 to 1.543)|
 |329e7f847e0d4b45|check 1 of the large-m work (sha256 prefix bbd32492ebbf)|1.497x (1.475 to 1.520)|
 |31e944e4fdba45fb|check 2 (sha256 prefix 8a5d95afa292)|1.484x (1.462 to 1.506)|
@@ -24,7 +24,7 @@ The bf16 file we submitted is the public vjeux solution (github.com/vjeux/okc-20
 
 All of the vjeux-based runs passed 9/9 tests. The reported times were 3,177.9 µs (a35a24f311274d15), 3,226.5 (329e7f847e0d4b45), 3,255.5 (31e944e4fdba45fb), 3,237.1 (1dd4d6bbe0214964), 3,209.0 (c440acdd631e4328) and 3,239.0 (635004eab6f9489a). The clean-room CUDA track's later best was recorded as 1.258x after five checks; we did not keep the job id for that one, so the 1.252x row is the one we can point to.
 
-How the rows relate: a5ac82b328cd4734 and a58c6e3b903744ea are both early Triton versions and we did not keep a note of how they differ. The large-m checks all changed only the large-m routes and are explained in large-m-plan-and-results.md.
+How the rows relate: a5ac82b328cd4734 and a58c6e3b903744ea are the same file (v3, sha256 prefix 98bbadd7bb53e954), one as the board submission and one as its check. The large-m checks all changed only the large-m routes and are explained in large-m-plan-and-results.md.
 
 ## Reading the case labels
 
@@ -85,7 +85,7 @@ The router floor is 1.78 µs at m = 8 and 1.86 at m = 32. Pooler at verify m=8 h
 
 ## Per-load ratios for the scored run
 
-Decode 1: 1.731. Decode 16: 1.564. Decode 32: 1.487. Verify m=8: 1.916. Verify m=128: 1.225. Verify m=256: 1.169. Geometric mean 1.492, which matches the judge's 1.491. The same file's check run, a35a24f311274d15, had verify m=128 at 1.260 and verify m=256 at 1.176.
+Decode 1: 1.730. Decode 16: 1.563. Decode 32: 1.486. Verify m=8: 1.912. Verify m=128: 1.225. Verify m=256: 1.169. Geometric mean 1.491, the judge's figure. The same file's check run, a35a24f311274d15, had verify m=128 at 1.260 and verify m=256 at 1.176.
 
 ## How noisy is a score
 
@@ -93,4 +93,4 @@ The judge's 95% intervals on these runs are about plus or minus 0.023 (1.475 to 
 
 Per-shape noise is plus or minus 1 to 2%. We only keep a custom path where it beats SGLang by 3% or more, and thethings reports using the same rule.
 
-On the other side of the board, screening and reruns cost the top teams 0.3 to 4.6% against their best displayed run (see where-the-score-comes-from.md), so the displayed scores near the top are optimistic.
+On the other side of the board, the screened value sat 0.1 to 4.6% below the displayed best run in the 17 rows that had one (see where-the-score-comes-from.md), so the displayed scores near the top are optimistic.

@@ -22,7 +22,7 @@ Verdict words: NO-GO means measured or refuted by static evidence. CLOSED means 
 
 |Id|Idea|What we checked|Result|Verdict|
 |-|-|-|-|-|
-|D1|Raise the PDL token cap from 32 to 128 for glue kernels|A Triton audit: all 10 PDL kernels call the wait, and pre-wait loads exist only in the first boundary, route, route-split and second boundary kernels (weights, stream input, local_start, and data from two kernels back). At T = 128 all dense picks are cuBLAS, the glue variant is off, and the MoE uses its main build|Job 304f0ebb702346d2: 2.106x (2.075 to 2.138), 13 of 13 passed. Target rows v16s and v16f against controls: x1.0014 (against baseline a006fb) and x0.9824 (against f6918a). Controls shifted together by +2.4% and +2.0%. The prepare-time A/B at T = 128 gave -0.3 us (floors -0.3 and +0.6), at T = 64 -2.3 us|NO-GO. No movement beyond the controls' common shift. Keep the cap at 32|
+|D1|Raise the PDL token cap from 32 to 128 for glue kernels|A Triton audit: all the PDL kernels (nine by a script count, ten in our notes) call the wait, and pre-wait loads exist only in the first boundary, route, route-split and second boundary kernels (weights, stream input, local_start, and data from two kernels back). At T = 128 all dense picks are cuBLAS, the glue variant is off, and the MoE uses its main build|Job 304f0ebb702346d2: 2.106x (2.075 to 2.138), 13 of 13 passed. Target rows v16s and v16f against controls: x1.0014 (against baseline a006fb) and x0.9824 (against f6918a). Controls shifted together by +2.4% and +2.0%. The prepare-time A/B at T = 128 gave -0.3 us (floors -0.3 and +0.6), at T = 64 -2.3 us|NO-GO. No movement beyond the controls' common shift. Keep the cap at 32|
 
 A follow-up closed the confound. The first check's prepare block ran extra captures and an empty_cache, so a clean test was our v3 plus only that block. Job c918dc92e4b949f7 (sha a32fd969): 13 of 13, 2.0856x, controls +0.52% against the same-cluster baseline. The earlier +2.0% control shift was run noise: five runs of the same runtime code span 2.4% on the 10-row control geomean. The A/B at T = 128 again showed zero (+0.4 us). The first check's headline 2.106x sat above the board entry's interval upper bound of 2.090, but the per-shape condition failed, so we did not count it as a win. The two baselines ran on different judge clusters (f6918a on nyc3b, a006fb on sfo3, the check on nyc3b), but the control shift against the same-cluster baseline was not a cluster effect.
 
@@ -30,11 +30,11 @@ A follow-up closed the confound. The first check's prepare block ran extra captu
 
 |Id|Idea|What we checked|Result|Verdict|
 |-|-|-|-|-|
-|M1|Stream-K flush constant 3 to 4|Closed by earlier evidence (below noise)|not re-measured|CLOSED|
+|M1|Stream-K flush constant 3 to 4|Closed first by earlier evidence (below noise), then measured in-process in the diagnostic run|0.1% to 0.5% faster at 17 to 256 tokens|CLOSED, under our 1.5% bar|
 |M1b|Per-unit overhead constants in the stream-K cost model|Code read only. The base file has no per-unit overhead term. Public constants differ by 2x between standalone and in-layer use (80 and 70 against 160 and 140), so a blind value has no basis|none|UNTESTED. Needs new cost-model code in a 198 KB kernel and a prepare-time constant scan on the GPU. Expected under 0.5% of the score|
 |M2|8-op E2M1 dequant against the current 9-op form|A search found an 8-op layout (I, rotl10, rotl13, then X = ((q & 0x1b001b) * C) & M with C = 2^2 + 2^7 + 2^12): 7 ALU plus 1 IMAD, against 7 ALU plus 2 IMAD. SASS of the tiny2 and mid builds shows 15.69 instructions per HMMA, ALU pipe 7.75 (x2 cycles = 15.5), FMA 6.75, so ALU cycles roughly equal issue slots|Model: issue falls 15.69 to 14.69 but ALU stays 7.75, so the loop bound moves 15.69 to 15.5 at best (-1.2%), and the kernel is DRAM-bound at 4.6 TB/s|NO-GO on SASS evidence|
 
-Two caveats on M2. The SASS counts come from the clang-to-ptxas route (166 registers against 149 and 153 in the nvcc build), so 7.75 ALU and 15.69 issue per word are approximate. The close also rests on a throughput model that does not cover a latency-bound loop with 2 warps per SMSP. The verdict stands because the bound is at most 1.2% of the loop either way. An ALU-light variant (IMAD.WIDE for the rotates) is the only remaining lever, and a zero-cost-dequant ablation in prepare would bound it.
+Two caveats on M2. The SASS counts come from the clang-to-ptxas route (166 registers against 149 and 153 in the nvcc build), so 7.75 ALU and 15.69 issue per word are approximate. The close also rests on a throughput model that does not cover a latency-bound loop with 2 warps per SMSP. The verdict stands because the bound is at most 1.2% of the loop either way. An ALU-light variant (IMAD.WIDE for the rotates) was the only remaining lever at that point. We later tried the 8-op form on the wgmma loop and it lost (job 84b9fccd4a804a48, 2.222x against 2.36x).
 
 |Id|Idea|What we checked|Result|Verdict|
 |-|-|-|-|-|
@@ -71,7 +71,7 @@ Closed on measurement: cold-code warming (our check scored 2.576x), FMA or polyn
 
 |Idea|Whole-score gain|Status|
 |-|-|-|
-|Swap-AB register-A wgmma decoding the 12-bit pack at m = 128 (a public design by chenwainuo, used inside keell0renz's file)|Ceiling 6.0%, 2.7% at half capture; expected value 0.3 to 0.5%|Closed earlier as the idea of putting 12-bit weights inside the m = 128 GEMM, where alygg77 lost 2.4 to 12 us. New evidence reopened the question: BF16 partials are now allowed, and a public design scored 1.5742. chenwainuo's own repo later showed the realised gain at m = 128 is about 4 us on two of five layers, roughly +1.2% of the bf16 score, not 6%. Very high effort|
+|Swap-AB register-A wgmma decoding the 12-bit pack at m = 128 (a public design by chenwainuo, used inside keell0renz's file)|Ceiling 6.0%, 2.7% at half capture; expected value 0.3 to 0.5%|Closed earlier as the idea of putting 12-bit weights inside the m = 128 GEMM, where alygg77 lost 2.4 to 12 us. New evidence reopened the question: BF16 partials are now allowed, and a public design scored 1.5742. chenwainuo's own repo later showed the realised gain at m = 128 is about 4 us on two of five layers, roughly +1.2% of the bf16 score, not 6%. We built it anyway: two judge checks scored 1.505x and 1.4915x, and the kernels ran about twice as slow as the existing picks. NO-GO|
 |Router K-split 16 at m = 128; split-K router for m = 8 to 32|0.1%, up to 1% at half capture of 2.0%|NO-GO. A Triton router from an X post already lost our A/B at every m|
 |cuBLASLt pins; a per-(layer, m) tuner under CUDA graphs|None|Closed in practice. Our three checks gave 1.497, 1.484 and 1.492x, every H200 config is algo 66, and our autotune with cold-L2 graphs already exists|
 |Validated route for every unscored m from 2 to 384|Compliance, not speed|Same as B2|
@@ -85,8 +85,8 @@ Dense bf16 wins ported into decode_layer stay closed, because weights are L2-war
 |Idea|Whole-score gain|Status|
 |-|-|-|
 |Scale-sharing K-permutation, 6-bit lossless scales and a warp-parallel stream-K prologue|Our first candidate measured +0.6% raw, about +1.4% against controls (2.3431x, interval 2.3080 to 2.3782)|Done. Public numbers: the K-permutation +1.25% of the moe board, 6-bit scales about +2% at 32 to 256 tokens, the prologue +0.9% at 32 tokens|
-|6-bit scales on the skinny builds|Unknown|Untested. keell0renz shipped it off. Another team's single judge check was +0.77% worse in score with no visible gain (see public-repos-survey.md). Treat as a warning|
-|Flush constant 4, per-unit stream-K cost 80/70, ring pacing at M <= 64|Each under 0.5% (our estimate)|Untested|
+|6-bit scales on the skinny builds|Unknown|Not run; closed on an op count (one more ALU op per scale, see `../moe/ideas-tried-and-closed.md`). keell0renz shipped it off. Another team's single judge check was +0.77% worse in score with no visible gain (see public-repos-survey.md). Treat as a warning|
+|Flush constant 4, per-unit stream-K cost 80/70, ring pacing at M <= 64|Each under 0.5% (our estimate)|Flush constant 4 measured 0.1% to 0.5% in-process (closed); the other two untested|
 |bs8 ring-issuer warp|+1.2 to 1.7% at bs8 on the authors' boxes, about 0.2 to 0.3% whole score|Untested; would need a single-size gate and tests at bs 4, 6 and 10|
 |Per-expert counters; BF16 per-route buffer|None recorded|Untested. The BF16 allowance covers split-K and split-KV partials, not per-route outputs|
 |Stream-K grid size and a collaborator cap|Unknown|Untested; pays only at 3 or more CTAs per tile|
@@ -99,13 +99,13 @@ Closed: column-major and SplitK ordering, 12-bit weights inside the m = 128 GEMM
 |Idea|Whole-score gain|Status|
 |-|-|-|
 |Port the MoE weight-byte cuts into the decoder's MoE|Realistic 0.5 to 1.0% (the moe check times 0.46), partly spent recovering the FP32-router cost|Allowed, not closed. Weights are cold in both settings, so it transfers. Later our v4 MoE variant measured net zero on the layer|
-|A tuner at T = 128 and a pinned pick for 33 <= T <= 128|Unknown; another team called it their largest single change|Untested; the tuner's picks at T = 128 should be read first|
+|A tuner at T = 128 and a pinned pick for 33 <= T <= 128|Unknown; another team called it their largest single change|We read our picks at T = 128 afterwards: none flipped between runs, so there was nothing to pin (see `../decode-layer/moe-port-and-other-ideas.md`)|
 |PDL cap 32 to 128|About +0.1 to 0.3%|NO-GO (D1)|
 |Early PDL trigger placement|0 to 1% (one team +0.9%, another at most 0.736 us per pair)|Capped by public measurements|
 |cuBLASLt picks chosen by in-layer timing at T = 128 and 256|Small|Open. An isolated winner ran 1.5 us slower in the real pipeline|
 |Pre-wait hoist of barrier init and table copy|+0.2 to 0.5% (our estimate)|Do not start. Same family as the failed hoisting check|
 
-Closed: cgemv in any form (our check failed 10 of 13 shapes, and another team moved 2.1898 to 2.2007), dense bf16 ports, BF16 router input, L2 hints at T = 1 (d1 25.7 to 26.6 us with hints against 24.5 to 25.8 without), a megakernel, side streams, cross-stage PDL (zero or worse), L2 prefetch of MoE weights (x0.99 to 1.00), 4-cluster qkv (x0.87), stacking unchecked wins.
+Closed: cgemv in any form (our check failed 3 of 13 tests, and another team moved 2.1898 to 2.2007), dense bf16 ports, BF16 router input, L2 hints at T = 1 (d1 25.7 to 26.6 us with hints against 24.5 to 25.8 without), a megakernel, side streams, cross-stage PDL (zero or worse), L2 prefetch of MoE weights (x0.99 to 1.00), 4-cluster qkv (x0.87), stacking unchecked wins.
 
 ## Part 3: ideas that came from the public repos
 

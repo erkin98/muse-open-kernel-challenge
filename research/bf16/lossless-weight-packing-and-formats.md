@@ -8,7 +8,7 @@ Labels: "verified" means we measured it or read the primary source, "third-party
 
 At m <= 32 every BF16 layer is bandwidth-bound, so the task's floor (bytes over 4.8 TB/s) can only be beaten by reading fewer bytes. The challenge rules allow this: the published rules text says BF16 weights "stay BF16, or smaller, losslessly", and dequantizing inside your own kernels is fine.
 
-The judge shows it clearly. nathenfernandes Fernandes' v18 has four cells under the 16-bit floor (pooler at decode 1, decode 16 and verify m=8, unpooler at decode 16; numbers in where-the-score-comes-from.md). In the file we submitted, which uses the same kind of format, pooler at decode 1 ran in 12.9 to 13.6 µs across four checks against a floor of 13.99 µs, and 13.68 µs in the profile of the scored run. Unpooler at decode 16 ran in 13.7 to 14.0 µs against 14.06. At decode 32 it did not hold: pooler 14.7 to 15.2 µs and unpooler 14.3 to 15.2 µs, back above the roughly 14 µs floor, so the saving shrinks as m grows and the unpacking starts to compete with the math.
+The judge shows it clearly. nathenfernandes's v18 has four cells under the 16-bit floor (pooler at decode 1, decode 16 and verify m=8, unpooler at decode 16; numbers in where-the-score-comes-from.md). In the file we submitted, which uses the same kind of format, pooler at decode 1 ran in 12.9 to 13.6 µs across six checks against a floor of 13.99 µs, and 13.68 µs in the profile of the scored run. Unpooler at decode 16 ran in 13.7 to 14.3 µs across those seven runs against 14.06, so it was above the floor in one of them. At decode 32 it did not hold: pooler 14.7 to 15.2 µs and unpooler 14.3 to 15.2 µs, back above the roughly 14 µs floor, so the saving shrinks as m grows and the unpacking starts to compete with the math.
 
 How much is compression worth by itself? thethings measured an uncompressed CUDA GEMV stack at 1.26x and the same stack with 12-bit weights at 1.33 to 1.34x (third-party; 1.331x scored, 1.343x on a check). So roughly +0.07x. Our own estimate on top of an uncompressed GEMV was about +0.08x.
 
@@ -27,7 +27,7 @@ The mantissa is noise, so only the sign and exponent bits compress. A fixed 12-b
 
 ## The 12-bit layout
 
-This is how nathenfernandes's README and the thethings report describe it (third-party; the file we submitted carries vjeux's version of the idea).
+This is how the thethings report describes it (third-party). nathenfernandes's README says only that small-token paths use lossless packing with exact escape restoration. The file we submitted carries vjeux's version of the idea.
 
 - The low byte of each weight is kept raw. That byte holds the exponent's lowest bit and the 7 mantissa bits.
 - A 4-bit field holds the sign plus a 3-bit index into a window of 8 consecutive values of the 7 high exponent bits. By our reading (inference) that covers 16 consecutive exponent values, which is why a 3-bit index is enough.
@@ -40,19 +40,19 @@ Our CPU numbers on how many weights fall outside the window (verified): a code w
 
 |Shape and m|Effect of 12-bit weights|
 |-|-|
-|pooler, qkv_gate, o at m <= 16; unpooler at m = 16|13 to 20% faster (third-party)|
+|pooler, qkv_gate, o at m <= 16; unpooler at m = 16|6 to 20% faster (third-party; qkv_gate at m = 16 gains only 6%)|
 |unpooler slice at m <= 8|about 2% slower, the shape is too small (third-party)|
 |qkv_gate and o at m = 32|slower (third-party)|
 |router|thethings found compressing its hi/lo pair slower; the router is too small and latency-bound|
 |m = 256 anywhere|no help, the shapes are compute-bound|
 
-Our arithmetic for the saving per shape at m = 1, on top of an uncompressed CUDA GEMV (estimates): pooler 17.1 to 13.6 µs, qkv_gate 11.2 to 9.5, o 6.1 to 5.3, and unpooler at m = 16 from 17.9 to 14.9.
+The saving per shape on top of an uncompressed CUDA GEMV, as thethings measured it on their own harness (third-party): pooler at m = 1 17.1 to 13.6 µs, qkv_gate 11.2 to 9.5, o 6.1 to 5.3, and unpooler at m = 16 from 17.9 to 14.9.
 
 ## Inside the m = 128 GEMM
 
-Putting the format inside a tensor-core GEMM at m = 128 lost every time we have evidence for. alygg77 reported losing 2.4 to 4.1 µs on o and unpooler and 12 µs on the pooler, and noted that integer unpacking does not overlap HGMMA. We then built our own version of this (the "rs128" design, described in large-m-plan-and-results.md) and it was far slower than the existing picks at m = 128.
+Putting the format inside a tensor-core GEMM at m = 128 lost every time we have evidence for. alygg77 reported losing 2.4 to 4.1 µs on o and unpooler and 12 µs on the pooler, and noted that integer unpacking does not overlap HGMMA. thethings built a compressed-weight wgmma GEMM for m = 128 and 256 too and found it correct but slower than cuBLAS on every shape. We then built our own version of this (the "rs128" design, described in large-m-plan-and-results.md) and it was far slower than the existing picks at m = 128.
 
-Before building it we did an arithmetic check on whether the unpacking could hide behind the tensor work (inference). From 989 TFLOP/s over 132 SMs at 1.83 GHz we get about 2,047 BF16 multiply-accumulates per clock per SM. One wgmma m64n128k16 is 131,072 MACs, roughly 64 tensor-core clocks. Unpacking the 8 weights a thread holds per k16 step is 12 integer instructions plus about 3 shared-memory loads, so around 15 issue slots per 64 clocks on each sub-partition, about 25%. That fits only if the unpacking of the next fragment overlaps the asynchronous wgmma through double-buffered A registers, and that overlap is what alygg77 says did not happen in his version. Our build bore him out in one way: the escape-correction phase was small (about 2,100 to 2,900 cycles per CTA on pooler and unpooler, under 1,000 on o) and the main loop was where the time went. See the large-m file.
+Before building it we did an arithmetic check on whether the unpacking could hide behind the tensor work (inference). From 989 TFLOP/s over 132 SMs at 1.83 GHz we get about 2,047 BF16 multiply-accumulates per clock per SM. One wgmma m64n128k16 is 131,072 MACs, roughly 64 tensor-core clocks. Unpacking the 8 weights a thread holds per k16 step is 12 integer instructions plus about 3 shared-memory loads, so around 15 issue slots per 64 clocks on each sub-partition, about 25%. That fits only if the unpacking of the next fragment overlaps the asynchronous wgmma through double-buffered A registers, and that overlap is what alygg77 says did not happen in his version. In our build the escape-correction phase was small (about 2,100 to 2,900 cycles per CTA on pooler and unpooler, under 1,000 on o) and the main loop was where the time went; we did not isolate why the loop was slow. See the large-m file.
 
 ## Staying exact on weights we have not seen
 

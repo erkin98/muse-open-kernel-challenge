@@ -62,7 +62,7 @@ Each lead carries its status. Two of the early estimates were wrong, and we say 
 ### decode_layer
 
 1. The moe kernel inside the layer. At 0.457 pull this is the main lever, and any improvement to the moe kernel carries over.
-2. A faster 1-token GEMV for qkv, o and the unpooler, at T = 1 only. Our first estimate was +9.5%. It assumed the projections read uncompressed weights through a separate router. Both assumptions were wrong. The layer's `sk2_kernel` already reads the same 12-bit lossless format (a `COMP=true` template argument in the kernel name), and the 18.7 µs kernel is the fused pooler plus router reading about 59 MB compressed. The faster GEMV only handles m = 1. The real gain is qkv at T = 1 (11.7 down to about 6.7 µs) plus smaller gains on o and the unpooler, 4 to 8 µs on decode 1 in total, or about +1 to 1.5% overall. It would be chosen by timing in `prepare()` and default to the old path. When we built a version of this, its first check failed 10 of 13 cases (a load hoisted above the PDL wait; see `replay-race-hazards.md`).
+2. A faster 1-token GEMV for qkv, o and the unpooler, at T = 1 only. Our first estimate was +9.5%. It assumed the projections read uncompressed weights through a separate router. Both assumptions were wrong. The layer's `sk2_kernel` already reads the same 12-bit lossless format (a `COMP=true` template argument in the kernel name), and the 18.7 µs kernel is the fused pooler plus router reading about 59 MB compressed. The faster GEMV only handles m = 1. The real gain is qkv at T = 1 (11.7 down to about 6.7 µs) plus smaller gains on o and the unpooler, 4 to 8 µs on decode 1 in total, or about +1 to 1.5% overall. It would be chosen by timing in `prepare()` and default to the old path. When we built a version of this, its first check failed three of its 13 tests, the one-token ones (a load hoisted above the PDL wait; see `replay-race-hazards.md`).
 3. Starting more weight stages before the PDL wait. The pooler could stream about 19 MB during `_boundary1` instead of about 6 MB, and the routing kernel's warp count could be tuned. Others' measurements say two stages is already the optimum (see "Closed by others' numbers" below).
 4. Glue fusion, worth at most 0.088 pull.
 5. Any attention win, worth 0.137 pull.
@@ -73,7 +73,7 @@ Decode_layer needs about +10% to move rank much. Without a large moe win we expe
 
 ### attention_decode
 
-1. Load balance on full-context cases. The scored cases use a context-length spread meant to mimic coding-assistant sessions, so lengths vary per sequence. If the work is split per sequence, SMs finish unevenly. Splitting by KV tokens across all 132 SMs (stream-K, in the style of LeanAttention) should fix that. Full-context cases run at 63 to 76% of floor speed, and they carry 0.678 pull. We have no result for this lead in these notes.
+1. Load balance on full-context cases. The scored cases use a context-length spread meant to mimic coding-assistant sessions, so lengths vary per sequence. If the work is split per sequence, SMs finish unevenly. Splitting by KV tokens across all 132 SMs (stream-K, in the style of LeanAttention) should fix that. Full-context cases run at 63 to 76% of floor speed, and they carry 0.678 pull. We later found that the borrowed file already splits the full-context cases equally by KV tiles over a flat grid of 264 CTAs (see `../attention/cost-model-and-breakdown.md`), so the basic version of this lead was already in the base. What remained was the uneven completion times across SMs (a spread of about 3.5 to 5.1 µs on the four flat shapes in our timing lab). Dynamic work claiming would address that, and we never built it (see `../experiments/attention/lab-ab-method-and-results.md`).
 2. Register and MUFU relief under the Nov 3 rules: FP16 accumulation of QKᵀ and P·V, FP8 P, and polynomial exp2. We tried a linear-mantissa exp2 and it gave nothing (2.550× on that check). Others report a ceiling of about 7% for polynomial exp, and report FMA-emulated exp2 as slower by 24 to 105 µs.
 3. Batch-1 sliding, a 4.2 µs kernel against a 0.1 µs floor. This is a latency chain, not a bytes problem, so the idea is more CTAs over the 2,048-key window and a shorter serial chain. Cold-code warming was the attempt here and gave no gain (`how-the-speedups-happened.md`).
 
@@ -87,11 +87,11 @@ The measured loss is at unit boundaries: GPU-scope release fences (about 0.9 µs
 2. Fewer fences: one release per CTA range instead of four per unit.
 3. Approximate SiLU and FP16/BF16 split partials, allowed by the new rules, expected small.
 
-Picks happen in `prepare()` at a measured win of at least 1% per M bucket (the in-prepare A/B noise is about 0.5%). The bar to submit is still a win over the board entry outside its 95% interval.
+Picks happen in `prepare()` at a measured win of at least 1% per M bucket (the in-prepare A/B noise is about 0.5%). The bar to submit is still a win over the board entry outside its 95% interval. We built the K-permutation and 6-bit scales (see `../moe/kperm-and-6-bit-scales.md`); they measured about +0.6% on the score and +2.0% to +2.8% on the three shapes they touch (see `../moe/results.md`).
 
 ### bf16_proj
 
-The one lever left untried in these notes was 12-bit weights inside the m = 128 GEMM. The pooler at verify 128 takes 22.3 µs against a 14.6 µs floor at 16 bits and would be about 11 µs at 12. It needs a new tensor-core kernel and we had no local compiler for it, so we judged it high risk. Others have since measured it as a loss (below).
+The one lever left untried in these notes was 12-bit weights inside the m = 128 GEMM. The pooler at verify 128 takes 22.3 µs against a 14.6 µs floor at 16 bits and would be about 11 µs at 12. It needs a new tensor-core kernel and we had no local compiler for it, so we judged it high risk. Others measured it as a loss (below), and when we built our own version later (two checks, 1.505× and 1.4915×) its kernels ran about twice as slow as the existing picks.
 
 Already ruled out in our own runs: cuBLASLt pins, a split-K wgmma GEMM, K-major cuBLAS, and extra gq/gqx instances. Our clean-room CUDA is slower than the borrowed file on every shape, and Huffman or DFloat11-style coding is slower at small batch.
 

@@ -81,7 +81,7 @@ The organizers describe `prepare` as untimed, with up to 300 s, for repacking. W
 
 ### The run time limit
 
-Our understanding is that the judge ends a run after 15 minutes, so a kernel that spins forever on a non-resident CTA hangs the run instead of failing a case. That figure is not in the rules text we saved.
+The task files, not the rules page, say a run has 15 minutes in all, compiling included, and 10 minutes for muse_bf16_proj. A run past that is charged as a timeout, so a kernel that spins forever on a non-resident CTA hangs the run instead of failing a case (our reading).
 
 ### Limits come from the live CLI
 

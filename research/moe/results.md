@@ -1,6 +1,6 @@
 # muse_moe_w4a16: judged runs
 
-Every MoE run we kept notes on, from the vjeux baseline at 2.332x to our submitted file at 2.362x, is listed here with per-shape speedups and our reading of them.
+The judged runs that led to our submitted MoE file, from the vjeux baseline at 2.332x to 2.362x, with per-shape speedups and our reading of them; the later experiment runs are in `../experiments/moe/experiment-ledger.md`.
 
 ## Shapes
 
@@ -16,9 +16,9 @@ Our changes touch only the wgmma build. Decode 32, verify 16 (128 tokens) and ve
 |vjeux file, board entry|41f596feaa60434e|2.329x|2.294-2.364x|5,773.6|
 |our first build (check 1)|2eaae7ab93824649|2.3431x|2.3080-2.3782x|5,739.6|
 |our frozen-dispatch build (v3, check)|03072c0ab2854c2e|2.3442x|2.3091-2.3794x|5,736.9|
-|v3, submitted|c663b9dfc629461b|2.362x|not recorded|not recorded|
+|v3, submitted|c663b9dfc629461b|2.3619x|2.3265-2.3974x|5,693.8|
 
-The first four passed 5/5 tests; the submitted run's test count is not recorded. Relative L2 error in check 1 was 2.385e-3 to 2.563e-3. The board entry was rank 397 of 1,387 when we started. The board run, check 1 and the v3 check all ran on cluster nyc3b, each on a different node. The cluster of the first vjeux check is not recorded.
+All five passed 5/5 tests. Relative L2 error in check 1 was 2.385e-3 to 2.563e-3. The board entry was rank 397 of 1,387 when we started. The board run, check 1 and the v3 check all ran on cluster nyc3b, each on a different node. The cluster of the first vjeux check is not recorded.
 
 The submitted file is v3 byte for byte (sha256 prefix c0828b74, from the repo's results table). The submit was a fresh judge draw of the same bytes and landed at 2.362x, at the top of the 2.33 to 2.36x range we had forecast from the two checks.
 
@@ -60,7 +60,7 @@ Against the board run of the vjeux file, the three control shapes came out lower
 |verify 16|+2.0%|+1.8%|
 |verify 32|+1.4%|+0.9%|
 
-The geometric mean of the changed shapes is +2.0% (check 1) and +1.8% (v3) over the board run. Dividing by the control ratio gives about +2.8% and +2.3%. Check 1 also timed the new build against the old one inside prepare, on the judge's GPU, and measured 2.2 to 2.5% for the same three shapes (ratios 0.9753, 0.9800 and 0.9753 against the original build). The in-process timing and the judge table agree on size, and the movement sits on the shapes we changed. We think the gain is real. It is also small: about +0.6% on the score, well inside the interval overlap.
+The geometric mean of the changed shapes is +2.0% (check 1) and +1.8% (v3) over the board run. Dividing by the control ratio gives about +2.8% and +2.3%. Check 1 also timed the new build against the old one inside prepare, on the judge's GPU, and measured 2.2 to 2.5% for the same three shapes (ratios 0.9753, 0.9800 and 0.9753 against the original build). The in-process timing and the judge table agree on size, and the movement sits on the shapes we changed. We think the per-shape gain is real. It is also small: about +0.6% on the score, which the headline cannot show because the intervals overlap.
 
 Before the v3 check we expected 2.352x, taking the board run's control values and check 1's heavy shapes. The result was 2.3442x because the controls did not come back to the board's values.
 

@@ -157,9 +157,9 @@ Judge: 16/16, 2.627x (CI 2.588-2.667), 1,433.6 us. Per case in us and speedup: d
 
 The reading we wrote down before launch was inconclusive by design. The expected effect is -0.35 us of 13.7, about 2.6% in time. The identical-code envelope for v1f over five runs is 13.67 to 14.47 us (2.506x to 2.629x), 4.9% wide, and the best control-normalised envelope was 3.3% wide. The result, 13.92 us and 2.592x, landed in the upper half of the envelope and the reader script printed inconclusive.
 
-A second reading came after the result and was not written down in advance. The judge's per-case "yours" figure is the raw event median minus a replay-overhead estimate for that run, and the estimate moves between 3.7 and 4.4 us for identical code (for the v1f rows: 4,064 / 3,744 / 4,032 / 4,224 / 4,352 and 4,064 ns). That is plus or minus 0.3 us on a 13.7 us case, as large as the effect. The raw medians come from 60 timed runs with a standard error of 25 to 43 ns and are much tighter once divided by control rows of the same run. Raw v1f medians in ns, with the overhead used for "yours":
+A second reading came after the result and was not written down in advance. The judge's per-case "yours" figure is the raw event median minus a replay-overhead estimate for that run, and the estimate moves between 3.7 and 4.4 us for identical code (for the v1f rows: 4,064 / 3,744 / 4,032 / 4,224 / 4,352 and 4,064 ns). That is plus or minus 0.3 us on a 13.7 us case, as large as the effect. The raw medians come from 60 timed runs with a standard error of 25 to 43 ns and are much tighter once divided by control rows of the same run. Raw v1f medians in ns, with the overhead used for "yours" (the last column is the subtraction as we did it; the judge's own medians differ from it by up to 0.05 us):
 
-|run|raw median|overhead|yours|
+|run|raw median|overhead|raw minus overhead|
 |-|-|-|-|
 |c20df44ab71d4005 (base)|18,368|4,064|14,304|
 |705c7dd9f34446dd (base rerun)|18,272|3,744|14,528|

@@ -26,7 +26,7 @@ Snapshot of the board taken just after midnight on Nov 4, 1,711 ranked entries (
 
 Rank 1 was 1.694x, rank 10 1.646x, rank 20 1.618x, rank 50 1.596x, rank 100 1.586x, rank 200 1.566x, rank 300 1.549x and rank 500 1.483x.
 
-Screening does not break up the 1.55x cluster. Only 23 rows carried a `screening` field (12 screened, 10 pending, 1 under review), and 17 rows carried a `screened_speedup`, which is a team's best screened run. Those values were 1.53 to 1.63x. Rank 4 showed 1.671x with a screened run at 1.617x; rank 16 showed 1.624x with one at 1.620x. Rank 13 (1.637x, screened) was reached on Oct 26, four days after the track opened. So the roughly 1.55x recipe was found early and survives screening. Screened speedups of the top teams sat 0.3 to 4.6% under their displayed best (for example 1.646 against 1.571), so the top of the board is a bit optimistic.
+Screening does not break up the 1.55x cluster. Only 23 rows carried a `screening` field (12 screened, 10 pending, 1 under review), and 17 rows carried a `screened_speedup`, which is a team's best screened run. Those values were 1.53 to 1.63x. Rank 4 showed 1.671x with a screened run at 1.617x; rank 16 showed 1.624x with one at 1.620x. Rank 13 (1.637x, screened) was reached on Oct 26, four days after the track opened. So the roughly 1.55x recipe was found early and survives screening. Across the 17 rows with a screened speedup, the screened value sat 0.1 to 4.6% under the displayed best (for example 1.646 against 1.571), so the top of the board is a bit optimistic.
 
 ## What a 1.5x entry has to look like
 
@@ -84,7 +84,7 @@ The reading we took: the 1.2x cluster on the board is a router-only fix like our
 
 ## What separates 1.14x from 1.52x
 
-nathenfernandes Fernandes published per-shape judge times for his v18 (1.5186x, 95% interval 1.496 to 1.541, job 66d8b007f6c641ee; his repository says it held rank 1 on Oct 24). We applied his per-shape speedups to the SGLang times from our v3 check and adopted one layer at a time. This is verified arithmetic on third-party numbers.
+nathenfernandes published per-shape judge times for his v18 (1.5186x, 95% interval 1.496 to 1.541, job 66d8b007f6c641ee; his repository says it held rank 1 on Oct 24). We applied his per-shape speedups to the SGLang times from our v3 check and adopted one layer at a time. This is verified arithmetic on third-party numbers.
 
 |Adopt his kernels for|Score|
 |-|-|
@@ -126,7 +126,7 @@ To be plain about it: the bf16 file we submitted is the public vjeux solution (g
 Why we think public code seeded the cluster, with the evidence we saw (the pages exist and say this; the causal link is inference):
 
 - vjeux/okc-2026 describes five complete submissions, one per problem, each in native CUDA built through `load_inline`. Its bf16 file uses losslessly compressed BF16 weights. Initial commit Oct 27, a refactor (f35a41e) on Oct 28. vjeux's own row on our saved board was 1.5014x (rank 471, best run Oct 26).
-- alygg77/okc-muse-spark-kernels (Apache-2.0) reports 1.5502x, rank 294 on our Nov 4 board; the README puts it at 75 of 1,401 on Oct 29. Its README says all five files start from vjeux's public kernels and that most of the speed comes from that base. For bf16 it keeps vjeux's 12-bit format and adds custom WGMMA o-projection kernels, pooler tuning and nathenfernandes's small-m routes; it credits its cuBLASLt plan pins to code posted by Matsvei on a second public code-sharing site. The README also reports judge noise: one unchanged file scored 1.526x, 1.541x, 1.544x and 1.550x in four runs on one day.
+- alygg77/okc-muse-spark-kernels (Apache-2.0) reports 1.5502x, rank 294 on our Nov 4 board; the README puts it at 75 of 1,401 on Oct 29. Its README says all five files start from vjeux's public kernels and that most of the speed comes from that base. For bf16 it keeps vjeux's 12-bit format and adds custom WGMMA o-projection kernels, pooler tuning and nathenfernandes's small-m routes; it credits its cuBLASLt plan pins to code posted on a second public code-sharing site. The README also reports judge noise: one unchanged file scored 1.526x, 1.541x, 1.544x and 1.550x in four runs on one day.
 - NathenFernandes/muse-bf16-proj (MIT) reports 1.5186x, rank 416.
 - A GitHub search for "muse_bf16_proj" finds 4 repositories and 922 code results. Many entrants keep their submission files public.
 - Timing, from the saved board: of the 436 entries in 1.50 to 1.60x, only 46 have their best run dated Oct 24 to 26. The rest are dated after vjeux's release, with 19, 23, 36, 62, 39, 62, 75 and 74 per day from Oct 27 to Nov 3. That fits public code seeding the cluster, but board growth alone could produce the same shape, so it is a correlation.
@@ -161,7 +161,7 @@ The first three rows at half capture add up to about 4.2%, within a point of the
 
 ## Sources
 
-- nathenfernandes Fernandes: https://github.com/NathenFernandes/muse-bf16-proj, per-shape results at https://raw.githubusercontent.com/NathenFernandes/muse-bf16-proj/solution/results/v18_shapes.csv and ranking history at https://raw.githubusercontent.com/NathenFernandes/muse-bf16-proj/solution/results/ranking-history.md
+- nathenfernandes: https://github.com/NathenFernandes/muse-bf16-proj, per-shape results at https://raw.githubusercontent.com/NathenFernandes/muse-bf16-proj/solution/results/v18_shapes.csv and ranking history at https://raw.githubusercontent.com/NathenFernandes/muse-bf16-proj/solution/results/ranking-history.md
 - thethings.ai: https://thethings.ai/p/okc/muse-bf16-proj-guide/03-strategy and https://thethings.ai/p/okc/muse-bf16-proj-report
 - vjeux: https://github.com/vjeux/okc-2026
 - alygg77: https://github.com/alygg77/okc-muse-spark-kernels

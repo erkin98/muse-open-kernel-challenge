@@ -11,7 +11,7 @@ Best run per problem, as reported by the judge. Ranks drift as other teams impro
 |muse_attention_decode|2.621x|8c9a79b3381c4707|One fused CUDA kernel per call for paged FP8 attention decode and 8-token verify. Based on the vjeux solution, plus a flat 8-token verify path and BF16 vector reductions.|
 |muse_moe_w4a16|2.362x|c663b9dfc629461b|W4A16 routed experts. Based on the vjeux solution, plus a K-reordered weight copy with 6-bit block scales for the wgmma path at 17 or more tokens.|
 |muse_decode_layer|2.083x|8aa6ec880e394012|Whole decoder layer. Based on the vjeux solution with the same MoE changes and an FP32 router input up to 8 tokens.|
-|muse_bf16_proj|1.491x|6c7a0061944e4339|Dense projections. The vjeux solution plus a Triton router candidate that is used only where it measures faster.|
+|muse_bf16_proj|1.491x|6c7a0061944e4339|Dense projections. The vjeux solution plus a Triton router candidate. The file times it against the existing router kernels, and on the judge it lost at every size, so the speed is the vjeux solution's.|
 |muse_prefill_layer|0.999x|06001358a94b40db|A reproduction of SGLang's own decoder layer. Parity, no speedup.|
 
 The judge's single-run noise is about 1%: the same attention kernel, run four times (twice with only a comment changed), scored 2.582x, 2.602x, 2.621x and 2.627x. The board keeps the best run, so a reported score sits slightly above the typical one.

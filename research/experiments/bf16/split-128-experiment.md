@@ -12,7 +12,7 @@ Above m = 32 the entry uses dense paths: a custom TMA GEMM (gq, with a variant g
 
 |Layer|Pick|Raw tune time|Verify-16 cell, ours|
 |-|-|-|-|
-|qkv_gate|gqx|18.34 us|n/a|
+|qkv_gate|gqx|18.34 us|15.24 us|
 |o|torchT|10.62 us|7.30 us|
 |pooler|gq|24.86 us|22.29 us|
 |unpooler|torchT|22.78 us|18.91 us|
@@ -99,9 +99,9 @@ Reading it:
 
 NO-GO. We did not launch a third check, and we did not submit either file.
 
-To beat gq by the 3% margin on the pooler, the main loop would have to reach about 700 to 750 cycles per unit (measured about 1500), and the epilogue would need a different design, probably a cluster reduction through distributed shared memory. Those are two unknown-cause fixes. A score-level gain would need pooler and unpooler each about 4 to 5 us under today's picks, which means rs128 kernels of 15 to 16 us against the 31 to 37 us we measured.
+To beat gq by the 3% margin on the pooler, the main loop would have to reach about 700 to 750 cycles per unit (measured about 1500), and the epilogue would need a different design (we did not work out which). Those are two unknown-cause fixes. A score-level gain would need pooler and unpooler each about 4 to 5 us under today's picks, which means rs128 kernels of 15 to 16 us against the 31 to 37 us we measured.
 
-The other layers do not change this. The o layer already lost 2x (18.7 against 10.85 us raw). A qkv_gate version, which we did not build, would take about 18 units per CTA at roughly 1300 cycles (about 13 us), plus 2 us fill, 5 us epilogue and the corrections: over 20 us, against about 14 us for gqx (18.2 us raw).
+The other layers do not change this. The o layer already lost 1.7x (18.7 against 10.85 us raw). A qkv_gate version, which we did not build, would take about 18 units per CTA at roughly 1300 cycles (about 13 us), plus 2 us fill, 5 us epilogue and the corrections: over 20 us, against about 14 us for gqx (18.2 us raw).
 
 Both scores (1.505 and 1.491) are noise on the board's own kernels, because rs128 was never picked. Neither shows per-cell movement.
 
