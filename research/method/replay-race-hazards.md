@@ -4,9 +4,9 @@ A static review of the ways our four board kernels could produce wrong output on
 
 ## Scope, and how much to trust it
 
-All four board entries (attention, moe, decode_layer, bf16) run vjeux's public Apache-2.0 kernels with our attribution header. The bf16 file also carries one extra router route that the judge never picks. We read the sources in the late afternoon of Nov 4, after our own clean-room work had ended. We did not run anything: no GPU, no judge check, no SASS inspection. The board runs of these files passed correctness on every case. The only measured evidence in this document is jakozaur's public report of replay-only failures in his own kernels. Everything about our files is formal memory-model reasoning plus latency arguments, and we say which is which.
+All four board entries (attention, moe, decode_layer, bf16) run vjeux's public Apache-2.0 kernels with our attribution header. The bf16 file also carries one extra router route that the judge never picks. We read the sources on the afternoon of Nov 4. We did not run anything: no GPU, no judge check, no SASS inspection. The board runs of these files passed correctness on every case. The only measured evidence in this document is jakozaur's public report of replay-only failures in his own kernels. Everything about our files is formal memory-model reasoning plus latency arguments, and we say which is which.
 
-Line numbers below refer to the board-entry files of jobs c20df44ab71d4005 (attention), 41f596feaa60434e (moe), 9b0d0973f11a4758 (decode_layer) and 6c7a0061944e4339 (bf16), header included. Later submissions changed some entries, and none of the numbers match upstream commit f35a41e, so use the function and kernel names to find things.
+Line numbers below refer to the board-entry files of jobs c20df44ab71d4005 (attention), 41f596feaa60434e (moe), 9b0d0973f11a4758 (decode_layer, since withdrawn) and 6c7a0061944e4339 (bf16), header included. Later submissions changed some entries, and our files differ from upstream commit f35a41e, so use the function and kernel names to find things.
 
 Severity labels:
 
@@ -53,8 +53,8 @@ The residual risk is MED, and it is an assumption, not a failure anyone has seen
 
 The attention design deliberately has no per-thread fences, and the parent source inside the decode_layer file shows why: two build switches (merge2 and merge3, both on) replace per-thread fences with the single acq_rel atomic. A per-thread fence call survives in the attention file behind a condition that can never be true. There are two ways to buy insurance:
 
-- Enable that dead call so every thread runs a GPU-scope acq_rel fence before the CTA barrier. This is the fence-before-ticket form from NVIDIA's thread-fence-reduction sample and does not rely on cumulativity. Inference, not measured: it costs 0.2 to 1 µs on the small decode shapes, which would be several percent on those loads.
-- Replace the atomics with per-split plain-store slots that the last CTA (or every CTA, on its own row slice) sums in a fixed order. That removes the zeroing hazard and makes results bitwise reproducible, but moves about 1 MB through L2 for the one-request full-context cases (d1f, v1f).
+- Enable that dead call so every thread runs a GPU-scope acq_rel fence before the CTA barrier. This is the fence-before-ticket form from NVIDIA's thread-fence-reduction sample and does not rely on cumulativity. Not measured. The MoE fence moves cost about 0.13 µs per fence, and the cost on the small decode shapes is an open question.
+- Replace the atomics with per-split plain-store slots that the last CTA (or every CTA, on its own row slice) sums in a fixed order. That removes the zeroing hazard and makes results bitwise reproducible, but adds per-split partial traffic through L2 for the one-request full-context cases (d1f, v1f).
 
 Neither is a tuning candidate. Both are a correctness decision.
 
@@ -62,7 +62,7 @@ Neither is a tuning candidate. Both are a correctness decision.
 
 The moe kernel's stream-K fix-ups have shares add partial sums with `red.global.add.v4.f32` into a slot buffer, then count their stages with `red.release.gpu` (the designated-finisher phase) or `atom.acq_rel.gpu`. The finisher waits with `ld.acquire`, runs a GPU-scope acq_rel fence in every thread, reads with `ld.cg`, zeroes the slot and resets its count. The acquire side is fenced per thread. On the release side, all 128 threads post their reds at the end of a segment, but the count is deferred to the next segment after a warpgroup barrier. The code comment says the deferral lets the reds drain and is worth 0.5 to 1 percent. In the common case the reds were posted long before the release, which makes the practical exposure small. The last segment of a phase has less slack. Same cumulativity assumption, MED.
 
-The launch-level machinery is sound as read. Each launch reads a generation word, the last CTA at the grid barrier bumps it, the barrier counter alternates by parity, and each launch zeroes the other parity's counter and the other copy of the sum-of-squares buffer. Per-launch flags are zeroed after the barrier, when every CTA is past the phases that poll them. The barrier is `bar.sync`, thread-0 `__threadfence` (which is a sequentially consistent fence), atomic add, acquire spin, `bar.sync`. The spin has no timeout: a CTA that never became resident would hang until the judge's run limit, which we understand to be 15 minutes, instead of failing cleanly.
+The launch-level machinery is sound as read. Each launch reads a generation word, the last CTA at the grid barrier bumps it, the barrier counter alternates by parity, and each launch zeroes the other parity's counter and the other copy of the sum-of-squares buffer. Per-launch flags are zeroed after the barrier, when every CTA is past the phases that poll them. The barrier is `bar.sync`, thread-0 `__threadfence`, atomic add, acquire spin, `bar.sync`. The spin has no timeout: a CTA that never became resident would hang until the run limit (15 minutes in the task files, 10 for bf16), instead of failing cleanly.
 
 ### Float order is not a bug, but it breaks bitwise soaks
 
@@ -82,7 +82,7 @@ A ring buffer in shared memory works like this. A producer thread issues a bulk 
 
 PTX 8.9.5 counts a causality edge between two accesses to one address only when both are generic, or both use one proxy within one thread block, or they are aliases with a proxy fence. A generic read followed by an async-proxy write is none of those. So by the document, the mbarrier chain alone does not order the read before the write, and PTX 8.6 says a proxy fence is needed. The implicit fence that PTX does document (9.7.10.28.2) covers the opposite direction: copy completes, then generic loads. The pattern therefore leans on implementation behavior, not on a written guarantee. This is the pattern in jakozaur's report, where the loads were `ldmatrix` feeding HMMA in a shared-memory-bound main loop, and a shared load can back up a long way in a loop like that. He measured 1 to 19% wrong launches at 2, 3 and 5 pipeline stages and none in 10,000 launches at 4 stages.
 
-The fix, in its final form: every lane of the consuming warp runs `fence.proxy.async.shared::cta` (one warp-uniform instruction), then `__syncwarp`, then lane 0 arrives. A fence from lane 0 alone would not formally cover the other 31 lanes' loads, because a proxy fence acts inside one thread (9.7.15.4). One caveat on the fix itself: the causality rules in 8.9.5 list no async-proxy-fence case, and the only support is the prose saying proxy fences compose with other synchronization. The fenced form is the documented intent, and it is what jakozaur measured clean (0 wrong in 200,000 launches). It is not a formally derived guarantee. Inference, not measured: the cost is one fence per warp per stage, 0 to 0.3% on the large-token moe cases.
+The fix, in its final form: every lane of the consuming warp runs `fence.proxy.async.shared::cta` (one warp-uniform instruction), then `__syncwarp`, then lane 0 arrives. A fence from lane 0 alone would not formally cover the other 31 lanes' loads, because a proxy fence acts inside one thread (9.7.15.4). One caveat on the fix itself: the causality rules in 8.9.5 list no async-proxy-fence case, and the only support is the prose saying proxy fences compose with other synchronization. The fenced form is the documented intent, and it is what jakozaur measured clean (0 wrong in 200,000 launches). It is not a formally derived guarantee. Inference, not measured: the cost is one fence per warp per stage, 0 to 0.3% on the moe cases at 32, 128 and 256 tokens.
 
 ### Where each ring in our four files stands
 
@@ -101,7 +101,7 @@ One lane of the weights warp issues a 36 KB bulk copy after waiting on the empty
 
 #### bf16 `sk2` early hand-back (verified facts)
 
-In the skinny GEMV, all the shared and `ldmatrix` loads of a unit are issued, then `__syncwarp` and the lane-0 empty-barrier arrive happen before decode and the matrix multiply consume those registers (around lines 1213 to 1219 of the bf16 file; same text at about 7914 inside decode_layer). So the arrive is not ordered after the loads complete. That is by design: the kernel hands the slot back before decoding and multiplying. The producer then refills the slot with two copies. The weights come from HBM and take a microsecond or more. The activation tile comes through a tensor-map load that hits L2 after the first CTA touches it and can land within a few hundred cycles. Inference: the pending loads are about 100 to 200 cycles old at the arrive, so the margin against the activation copy is only about 2 to 3 times, thinner than the moe ring's margin. This is why it ranks first. It is live only for `sk2` configs with one unit per warp. Configs with more units per warp hand the slot back after the multiply is issued, with loaded values already consumed, so they are fine. In decode_layer the exposed shapes are the verify-1 loads (8 tokens) for sure, and the decode loads at 16 and 32 tokens if the tuner picks this path or the fused pooler-plus-router kernel uses the one-unit-per-warp router config. We did not read that fused kernel's body.
+In the skinny GEMV, all the shared and `ldmatrix` loads of a unit are issued, then `__syncwarp` and the lane-0 empty-barrier arrive happen before decode and the matrix multiply consume those registers (lines 1213 to 1217 of the bf16 file; same text at 7914 to 7917 inside decode_layer). So the arrive is not ordered after the loads complete. That is by design: the kernel hands the slot back before decoding and multiplying. The producer then refills the slot with two copies. The weights come from HBM and take a microsecond or more. The activation tile comes through a tensor-map load that hits L2 after the first CTA touches it and can land within a few hundred cycles. Inference: the pending loads are about 100 to 200 cycles old at the arrive, so the margin against the activation copy is only about 2 to 3 times, thinner than the moe ring's margin. This is why it ranks first. It is live only for `sk2` configs with one unit per warp. Configs with more units per warp hand the slot back after the multiply is issued, with loaded values already consumed, so they are fine. In decode_layer the exposed shapes are the verify-1 loads (8 tokens) for sure, and the decode loads at 16 and 32 tokens if the tuner picks this path or the fused pooler-plus-router kernel uses the one-unit-per-warp router config. We did not read that fused kernel's body.
 
 The same fix applies at both sites: a proxy fence by all lanes, then `__syncwarp`, then the arrive. The fence has to wait for the pending loads. Inference, not measured: likely under 100 cycles per stage, on two configs.
 
@@ -119,7 +119,7 @@ The moe phase-A/B x slices are bulk-copied from buffers that other CTAs wrote wi
 
 ## Hazard 3: mbarrier reuse
 
-The files initialize their barriers once per launch or once per segment, with `fence.mbarrier_init`, after an end-of-segment `__syncthreads`. No barrier memory is later reused for data, and none of the four files calls `mbarrier.inval`. Initializing over a barrier that is still valid is common practice but not a documented guarantee. Phase parity flips on ring wrap and consumers derive it from the sequence number, with no retry paths. We rate all of it LOW.
+The files initialize their barriers once per launch, with `fence.mbarrier_init`. No barrier memory is later reused for data, and none of the four files calls `mbarrier.inval`. Initializing over a barrier that is still valid is common practice but not a documented guarantee. Phase parity flips on ring wrap and consumers derive it from the sequence number, with no retry paths. We rate all of it LOW.
 
 Phase-entry proxy fences are executed by thread 0 only and cover only its own earlier accesses. At kernel start the region is fresh. Two of them are in builds the scored shapes do not use.
 
@@ -129,10 +129,10 @@ With programmatic dependent launch, a kernel may start early and run code before
 
 - Attention never requests PDL, so its `griddepcontrol` instructions are no-ops. Its `ld.global.nc` loads read only inputs (sequence lengths, scales, RoPE frequencies, qkv) that no kernel writes during a launch.
 - Moe has PDL off. The wait is the first statement after the thread id and the trigger sits after both phases.
-- decode_layer has PDL on for up to 32 tokens. The Triton kernels trigger and then wait immediately; the embedded attention issues page-index copies (an input) before its wait and reads everything other kernels produce after it; the skinny kernels issue weight stages before the wait and read x after it. In every kernel we read, pre-wait code touches only weights, constants or graph inputs. A pre-wait knob that would let the attention read K/V early is off.
+- decode_layer has PDL on for up to 32 tokens. The Triton kernels trigger and then wait immediately; the embedded attention issues page-index copies (an input) before its wait and reads everything other kernels produce after it; the skinny kernels issue weight stages before the wait and read x after it. In every kernel we read, pre-wait code touches only weights, constants or graph inputs, plus an epoch word that only the previous replay writes in the flat attention kernels. A pre-wait knob that would let the attention read K/V early is off.
 - Replay to replay is safe. A graph's last kernel completes before the next graph launches (8.9.4), so PDL edges inside one replay cannot overlap the previous replay's zeroing.
 
-Two things we could not close. First, whether the compiler keeps every producer load below the wait in the generated SASS. Our own decode_layer candidate failed its three one-token tests (10 of 13 passed) because its new GEMV's loads were hoisted above the wait through `ld.global.nc`. That shows the class is real for CUDA code. The Triton kernels in the layer load through plain `tl.load` after the wait, but we have not looked at their compiled output. Because PTX describes `ld.global.nc` only as a load through the non-coherent read-only cache (9.7.10.9), with no coherence statement against writers in the same or an overlapped kernel, the safe habit is to use that load for inputs only. Second, multi-hop visibility. `griddepcontrol.wait` documents visibility only for the immediately preceding grid, yet decode_layer's second boundary kernel reads a buffer that the first boundary kernel wrote four to five kernels earlier. Transitivity of causality order should cover it, and the layer passed its judge runs, but the wait's text does not state the multi-hop case. That is an assumption.
+Two things we could not close. First, whether the compiler keeps every producer load below the wait in the generated SASS. Our own decode_layer candidate, a GEMV for one-token projections, failed 3 of 13 judge tests (10 passed) because the compiler hoisted its activation loads above the wait, emitted as `ld.global.nc`. That shows the class is real for CUDA code. The Triton kernels in the layer load through plain `tl.load` after the wait, but we have not looked at their compiled output. Because PTX describes `ld.global.nc` only as a load through the non-coherent read-only cache (9.7.10.9), with no coherence statement against writers in the same or an overlapped kernel, the safe habit is to use that load for inputs only. Second, multi-hop visibility. `griddepcontrol.wait` documents visibility only for the immediately preceding grid, yet decode_layer's second boundary kernel reads a buffer that the first boundary kernel wrote four to five kernels earlier. Transitivity of causality order should cover it, and the layer passed its judge runs, but the wait's text does not state the multi-hop case. That is an assumption.
 
 ## Hazard 5: workspace lifetime, growth and cloning
 
@@ -190,7 +190,7 @@ The chance of seeing at least one failure in N replays at failure rate p is 1 - 
 
 |Failure rate p|N = 30,000|N = 60,000|
 |-|-|-|
-|1e-4|95.0%|99.7%|
+|1e-4|95.0%|99.8%|
 |5e-5|77.7%|95.0%|
 |2e-5|45.1%|69.9%|
 |1e-5|25.9%|45.1%|
@@ -205,15 +205,15 @@ Replay cost is the profile's kernel time plus about 4 µs fixed, with a floor ne
 |-|-|-|-|-|
 |attention|12|619 (+48 overhead)|20 s|40 s|
 |moe|6|710 (+24)|22 s|44 s|
-|decode_layer|12|2,635 (+48)|81 s|161 s|
+|decode_layer|12|2,635 (+48)|80 s|161 s|
 |bf16|30|333 (+120 overhead, 8 µs floor)|14 s|27 s|
 
-An L2 flush per replay (12 to 16 µs) adds 25 to 30 percent on average and doubles the small shapes. Restricting the soak to shapes that use atomics, counters or the early-release ring is much cheaper: five bf16 cases (`sk2` `o` and router, plus the router GEMM) at about 10 µs each take roughly 3 s at 60,000 replays, and three representative decode_layer shapes (sliding decode 1, sliding verify 1, full verify 16) take about 16 s at 30,000.
+An L2 flush per replay (12 to 16 µs) adds about 16 to 21 percent to these totals and roughly doubles the small shapes. Restricting the soak to shapes that use atomics, counters or the early-release ring is much cheaper: five bf16 cases (`sk2` `o` and router, plus the router GEMM) at about 10 µs each take roughly 3 s at 60,000 replays, and three representative decode_layer shapes (sliding decode 1, sliding verify 1, full verify 16) take about 16 s at 30,000.
 
 ### Budget against the 300 s prepare limit
 
 - Moe: 137.3 s already, so a 44 s soak lands near 181 s. Feasible, but the first call into the WGS path added about 50 s on other teams' runs, so time-box it.
-- decode_layer: prepare already builds five extensions in parallel (about 85 s by the code's own comment), tunes and self-tests; we found no recorded prepare time. A full 30,000-replay soak (81 s) is risky, so only the restricted one would fit.
+- decode_layer: prepare already builds five extensions in parallel (about 85 s by the code's own comment), tunes and self-tests; we found no recorded prepare time. A full 30,000-replay soak (80 s) is risky, so only the restricted one would fit.
 - bf16: the CUTLASS build takes 70 to 80 s plus autotune; only the 3 s restricted soak is affordable. A self-test and disabled-route mechanism already exists there.
 - Attention: no `prepare()` at all. A first-call self-test would run either inside graph capture or as extra work in the timed call, so a soak is impossible.
 - In every case, use a wall-clock deadline (prepare start plus 200 s) and truncate the soak if it is hit. A fallback that needs a second compiled variant costs another 15 to 30 s per build.

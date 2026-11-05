@@ -11,7 +11,7 @@ Nothing in it clears judge noise on any board we entered. It is a from-scratch e
 Where it is useful:
 
 1. Negative evidence. Packed half2 exp does not buy MUFU throughput on Hopper; wgmma-RS for small M does not pay; fusing residual glue into GEMV tails lost; a 12-bit RS-wgmma GEMM at m = 128 loses to cuBLAS by 1.6 to 1.7x.
-2. One small untested MoE micro-idea, an 8-op E2M1 placement against our 9-op decode, with an expected gain of 0.3 to 1.0% on the MoE and 0.15 to 0.45% on the decode layer. Later outcome: the repo's method notes (`notes/method.md` at the repo root) record that an 8-op dequant variant regressed, 2.222x against 2.36x. We believe it is this idea, but the notes do not say which placement was used (inference).
+2. One small untested MoE micro-idea, an 8-op E2M1 placement against our 9-op decode, with an expected gain of 0.3 to 1.0% on the MoE and 0.15 to 0.45% on the decode layer. Their own judge runs for the variant are in the MoE section below. We found no later outcome for it in the material we read.
 3. Two traps for anyone borrowing from it: a speculative sequence-length guess in attention, and a BF16 router input in the decode layer.
 
 ## The repo
@@ -98,7 +98,7 @@ All of them are under the 2.5 to 3% bar other teams' reports suggest is needed t
 
 |idea|status|estimated whole-score gain|
 |-|-|-|
-|8-op E2M1 placement against our 9-op|untested when read; later regressed on the MoE board (see the short answer)|MoE 0.3 to 1.0%, decode layer up to 0.45%|
+|8-op E2M1 placement against our 9-op|untested on our layout; their judge runs are in the MoE section|MoE 0.3 to 1.0%, decode layer up to 0.45%|
 |5-bit lossless scale code with a per-expert base|untested, same family as the 6-bit scales|MoE 0.3 to 0.7% at most|
 |check SASS for a sequence-length load hoisted above the first barrier|untested, static check only|attention 0 to 0.5% (their judge did not confirm)|
 |uniform-datapath wgmma descriptors|untested, noise on their judge|MoE 0 to 0.3%|

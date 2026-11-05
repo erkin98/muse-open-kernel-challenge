@@ -84,7 +84,7 @@ A separate post of Nov 2 by @utterwqlut (https://x.com/utterwqlut/status/2117234
 
 - Nothing new on kernels. The only concrete lever (combine the component optimizations in the full decode kernels) is how our decode entry is already built, and its MoE byte-cut port measured net zero.
 - Two process ideas were worth taking: gate each candidate on whether its emitted code differs from the incumbent's, and keep a promotion ledger.
-- We still do not know where the 7.5 to 8% gap between our decode-layer entry and the leading entries comes from. Nothing in this material explains it.
+- We still do not know where the 9.4 to 10% gap between our decode-layer entry (2.059x at the time) and keell0renz's reruns (2.2532 to 2.2641x) comes from. Nothing in this material explains it.
 
 ## Limits
 

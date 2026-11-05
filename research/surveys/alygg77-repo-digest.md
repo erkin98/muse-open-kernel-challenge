@@ -48,7 +48,7 @@ Bf16 (outside our two main problems, +2,618 lines): nathenfernandes's MIT routes
 - In the vjeux base (and so in our entry before we fixed it), boundary 1 computes the normalised activation in FP32 but stores only a BF16 copy. The pooler and router both read that copy at every T, and the router uses BF16 hi plus lo weight rows with FP32 accumulation. At T <= 8 the router input is therefore BF16-rounded.
 - alygg77 also writes an FP32 copy of the normalised activation at T <= 8, and a later override recomputes it exactly because an earlier version still had about 2e-3 relative error. The router runs as an FP32 by FP32 GEMV, or as the interleaved FP32 stage in the fused pooler at T = 1. Its documents say SGLang's reference feeds the router an FP32 activation and FP32 weights at T <= 8 and BF16 plus hi/lo above 8 tokens. a poster on a second public code-sharing site found this and alygg77 checked it against the task baseline.
 - The live rules let the router's FP32 weights run as BF16 hi plus lo at any batch size. Their line on activations (stay BF16 or FP32 wherever SGLang's kernel keeps them in BF16) is worded for BF16 sites and does not name the FP32 router input, so reading it as meaning that FP32 stays FP32 where SGLang keeps FP32 is our inference. Our entry passed 13 of 13 judge tests with the rounded input, so the tolerance accepted it, but the organisers read top entries.
-- Recommendation we followed: at T <= 8 feed the router the FP32 activation and keep the hi/lo weights. The FP32 activation is already in registers in boundary 1, so a second FP32 output costs about 2x the x-bytes on 1 to 8 rows, and alygg77 measured the interleaved version at board parity.
+- Recommendation we later followed in decode v3: at T <= 8 feed the router the FP32 activation and keep the hi/lo weights. The FP32 activation is already in registers in boundary 1, so a second FP32 output costs about 2x the x-bytes on 1 to 8 rows, and alygg77 measured the interleaved version at board parity.
 - Their measured facts: the exact compliant router has a maximum absolute difference of 8.6e-6 and 7.6e-6 against FP32 F.linear, and top-8 ids are identical in 882 of 882 cases. The judge prices the FP32 router at v1 about twice as high as local runs (3.8% against 1.8%).
 
 ## Per-case comparison with our judge runs
@@ -109,7 +109,7 @@ moe (alygg77 is the vjeux base plus KPERM3 and the MID helper warp zero):
 |v16 bs128|180.09|175.24|+4.85|2.557|2.676|1.047|
 |v32 bs256|216.19|207.76|+8.43|2.841|2.963|1.043|
 
-The loads that run the WGS build (d32, v16, v32: +2.8%, +4.7%, +4.3%) match alygg77's same-cluster KPERM3 read (+2.6%, +3.9%, +3.1%) plus noise. The d1, d16 and v1 loads sit in the +0.9 to +1.8% cluster-offset band that they documented. Board: 2.4015 against 2.329 (+3.1%), of which about +1.25% is KPERM3 and the rest is noise or cluster offset.
+The loads that run the WGS build (d32, v16, v32: +2.8%, +4.7%, +4.3%) match alygg77's same-cluster KPERM3 read (+2.6%, +3.9%, +3.1%) plus noise. The d1, d16 and v1 loads show +0.8% to +3.6%, which overlaps the +0.9 to +1.8% cluster-offset band that they documented. Board: 2.4015 against 2.329 (+3.1%), of which about +1.25% is KPERM3 and the rest is noise or cluster offset.
 
 ## Measured wins in the facts file (attention, moe, decode_layer)
 

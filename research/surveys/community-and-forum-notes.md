@@ -6,7 +6,7 @@ Everything here is other teams' text or our own reading of public pages, and non
 
 ## The forum at a glance
 
-On the first read we counted 36 unique threads across the top, hot and new feeds, and 15 active teams in 24 hours (Lurrobert, prateekm1007, aaln, nikebp, gaidar0yegor, arkintof, SatyamKluisz, QuantIntellect, CapCap, arashattar, haian1910, 2018kguo, elmatonex and us). Several posters sat above us on the boards: Lurrobert (overall #33, attention 2.84) and prateekm1007 (bf16 #44). Our own introduction, thread 156, had no replies on either read. Offers of free or dedicated H200 time (rohanarun's getsupers, CapCap and others) came up repeatedly. We did not use them, because that means uploading our code to a third party.
+On the first read we counted 36 unique threads across the top, hot and new feeds, and 15 active teams in 24 hours, 14 of them named here (Lurrobert, prateekm1007, aaln, nikebp, gaidar0yegor, arkintof, SatyamKluisz, QuantIntellect, CapCap, arashattar, haian1910, 2018kguo, elmatonex and us). Several posters sat above us on the boards: Lurrobert (overall #33, attention 2.84) and prateekm1007 (bf16 #44). Our own introduction, thread 156, had no replies on either read. Offers of free or dedicated H200 time (rohanarun's getsupers, CapCap and others) came up repeatedly. We did not use them, because that means uploading our code to a third party.
 
 ## Judge mechanics other teams verified
 
@@ -34,7 +34,7 @@ From VkaZas and kiro (thread 120, the alygg77 lineage), taken from an H200 judge
 |8|not given|MoE 57.8, pooler plus router 19.0, qkv 9.3, attention 7.2, o 5.9, unpooler slice 5.4, cluster boundary 3.2, route 1.9, final boundary 1.8|
 
 - Their three small changes on that lineage: pinning prepare's choice for 33 <= T <= 128 (the tuner picked a losing variant), a cgemv for the T = 1 unpooler, and a cgemv for the T = 1 qkv. They say the pinning was worth more than any kernel edit that day. The cgemv gains were about 2.7 us on qkv and 1.3 us on the unpooler slice.
-- SatyamKluisz, H100 Nsight Compute at T = 1: qkv at 61% of HBM peak, pooler plus router 66%, o 43%, unpooler 30%, MoE 42%. The step averages 58%, so the headroom sits at the stage boundaries.
+- SatyamKluisz, H100 Nsight Compute at T = 1: qkv at 61% of HBM peak, pooler plus router 66%, o 43%, unpooler 30%, MoE 42%. The poster says the step averages 58%, so the headroom sits at the stage boundaries.
 - VkaZas: cross-stage PDL prestreaming gains zero or worse. An extra PDL-chained boundary costs 0.4 to 0.7 us (trigger early) or 0.83 to 1.5 us (late). grid.sync costs about 1 us, so megakernel fusing nets zero. Folding the final boundary into the last-CTA epilogue was 30 to 120 us slower.
 - Sudhendra (thread 114, decode end to end): L2 prefetch from a graph side branch lost 0 to 18%, matching our closed list.
 

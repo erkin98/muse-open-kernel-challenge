@@ -21,7 +21,7 @@ Many headline numbers in these papers live in figures. The figures are SVG objec
 |-|-|-|
 |FlashAttention, arXiv 2205.14135 (https://arxiv.org/abs/2205.14135)|Read for mechanism and headline numbers|Nothing. A fused decode kernel never writes the score block anyway.|
 |FlashAttention-2, 2307.08691 (https://arxiv.org/abs/2307.08691)|Read|Nothing. The one transferable trick, keep the output un-normalised and divide once at the end, is already in the entry.|
-|FlashAttention-3, 2407.08608 (https://arxiv.org/html/2407.08608)|Body read, then sections 4.1, C.1 and C.2|Nothing. The FP8 head-dim-64 results are figures at prefill shapes (16k tokens, sequence 512 to 16896, H100 SXM5 at 1830 MHz, lengths made divisible by 132 SMs). The main text gives FP8 numbers only for head dim 256. There are no decode or KV-cache numbers in the text. Making lengths divisible by the SM count is what our flat equal-share grid already does.|
+|FlashAttention-3, 2407.08608 (https://arxiv.org/html/2407.08608)|Sections 4.1, C.1 and C.2 only|Nothing. The FP8 head-dim-64 results are figures at prefill shapes (16k tokens, sequence 512 to 16896, H100 SXM5 at 1830 MHz, lengths made divisible by 132 SMs). The main text gives FP8 numbers only for head dim 256. There are no decode or KV-cache numbers in the text. Making lengths divisible by the SM count is what our flat equal-share grid already does.|
 |Online normalizer for softmax, 1805.02867 (https://arxiv.org/abs/1805.02867)|Read|Nothing. The (max, sum) combine being associative is the basis of every split-KV merge, ours included.|
 |FlashInfer, 2501.01005 (https://arxiv.org/html/2501.01005)|Intro, section 4.2 and appendix B|Nothing. Fig. 8 (bandwidth and FLOPs utilisation at batch 16, lengths 1024 constant, uniform and Zipf, against FlashAttention 2 and 3) is figure only. The text credits the load-balanced scheduler and tile-size selection, both already in our grid. Appendix B, Fig. 12: page-size-1 (vector-sparse) decode is within 1% of contiguous KV at head_dim 128 with 32 heads, while prefill loses about 10% on the FA3 template because TMA cannot gather. That supports dropping the idea that row gather limits decode.|
 |PagedAttention, 2309.06180 (https://arxiv.org/abs/2309.06180)|Read|Nothing. The judge fixes page size at 1.|
@@ -36,7 +36,7 @@ Many headline numbers in these papers live in figures. The figures are SVG objec
 
 |Source|Depth|What it changed|
 |-|-|-|
-|Stream-K, 2301.03598 (https://arxiv.org/abs/2301.03598)|Read (ar5iv copy)|Nothing new. Our moe kernel is already a grouped stream-K with a job queue. The unused ideas, a grid-size cost model and a cap on collaborators per tile, stayed in the ideas ledger as untested.|
+|Stream-K, 2301.03598 (https://arxiv.org/abs/2301.03598)|Read|Nothing new. Our moe kernel is already a grouped stream-K with a job queue. The unused ideas, a grid-size cost model and a cap on collaborators per tile, stayed in the ideas ledger as untested.|
 |MARLIN, 2408.11743 (https://arxiv.org/abs/2408.11743)|Read|Nothing. It is an Ampere mma.sync pipeline. Evict-first weights, offline fragment reshuffle, bit-field dequant and striped partitioning are already in the moe entry.|
 |Machete (https://developers.redhat.com/articles/2024/10/14/introducing-machete-mixed-input-gemm-kernel)|Full prose|Nothing. Offline weight pre-shuffle, swapped operands so the weights are the register-sourced A of wgmma, TMA and warp specialisation are all in the moe entry. Its own future-work list says batches under 32 are still open, and it gives no numbers for them.|
 |Marlin FP4 dequant header in the serving library's repo, dequant.h (https://github.com/vllm-project/vllm/blob/main/csrc/quantization/marlin/dequant.h)|Header located (22,312 characters, E2M1 functions found); body not re-read|Nothing. E2M1 bits are moved into the float's sign, exponent and top mantissa and the result carries a fixed power of two, which is what our entry does. A survey by lee101 counts Marlin's FP4 dequant at 15 operations per 8 values against our 9.|
@@ -56,7 +56,7 @@ The long notes on these are in gemm-moe-and-compression-papers.md.
 
 |Source|Depth|What it changed|
 |-|-|-|
-|Astra, 2509.07506 (https://arxiv.org/abs/2509.07506)|Local HTML copy read in full (excerpt without introduction and references); OpenReview not opened|Nothing for scores. It tunes three small SGLang kernels on H100.|
+|Astra, 2509.07506 (https://arxiv.org/abs/2509.07506)|Abstract and a partial local HTML copy (excerpt without introduction and references); OpenReview not opened|Nothing for scores. It tunes three small SGLang kernels on H100.|
 |Minimal Executable Programs, 2512.22147 (https://arxiv.org/abs/2512.22147)|See the conflict note below|Nothing for scores. Its own table shows standalone-to-integrated gaps, which supports our rule that standalone wins are not trusted until they survive the full layer.|
 |Jansen, Analyzing Optimization Variables in GPU Kernel Tuning, Leiden bachelor thesis (https://theses.liacs.nl/3374)|See the conflict note below|Nothing. Its parameter ranking comes from A100, A4000, A6000 and AMD cards.|
 |Tuning the tuner, Leiden PhD thesis (https://scholarlypublications.universiteitleiden.nl/handle/1887/4301430)|Abstract page only|Nothing.|
@@ -73,7 +73,7 @@ An earlier pass reports reading the Leiden thesis in full and sections 3 to 5 of
 |CUDA Programming Guide chapters 4.5 (programmatic dependent launch), 4.12 (async copies), 4.2 (graphs), 5.7 (memory model) (https://docs.nvidia.com/cuda/cuda-programming-guide/)|Read|Same.|
 |CUTLASS pipeline synchronisation page (https://docs.nvidia.com/cutlass/latest/media/docs/cpp/pipeline.html)|Read|Nothing beyond the above.|
 |threadFenceReduction sample (https://raw.githubusercontent.com/NVIDIA/cuda-samples/master/cpp/2_Concepts_and_Techniques/threadFenceReduction/threadFenceReduction_kernel.cuh) and NVIDIA forum thread 244413 (https://forums.developer.nvidia.com/t/is-threadfence-useful-at-all/244413)|Read|Reference pattern for the last-block ticket merge.|
-|GTC 2010 session 2238 (better performance at lower occupancy)|Saved copy|Little's law, used to explain why a first weight tile lands several microseconds after launch.|
+|GTC 2010 session 2238 (better performance at lower occupancy)|Saved copy; slides 1 to 40 read|Little's law, used to explain why a first weight tile lands several microseconds after launch.|
 
 ## Generic tuning material we were sent
 

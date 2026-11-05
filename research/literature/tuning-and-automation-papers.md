@@ -37,7 +37,7 @@ What it means for us. The isolate-check-time loop is what `local_test.py` plus `
 
 ## Leiden thesis on tuning parameters
 
-Analyzing Optimization Variables in GPU Kernel Tuning, a bachelor thesis at LIACS, Leiden University, 22 July 2025, 32 pages (https://theses.liacs.nl/3374, PDF https://theses.liacs.nl/pdf/2024-2025-JansenTThomas.pdf).
+Analyzing Optimization Variables in GPU Kernel Tuning, a bachelor thesis at LIACS, Leiden University, 22 July 2025, 32 pages (https://theses.liacs.nl/3374, PDF https://theses.liacs.nl/pdf/2024-2025-JansenTThomas.pdf). An earlier pass reports reading the full text; a later checklist lists the thesis as never read, so the findings below are that earlier pass's reading.
 
 - It runs no new tuning. It analyses existing Kernel Tuner brute-force cache files of the BAT benchmark kernels (2D convolution, dedispersion, a CLBlast-style GEMM, Hotspot) on A100, A4000, A6000, W6600, W7800 and MI250X.
 - Two metrics: Pearson correlation of each parameter with run time, and Sobol' first-order variance-based sensitivity, including pairwise subsets. Total-order indices are left as future work.
@@ -54,7 +54,7 @@ The default strategy is brute force, and there are 15 optional strategies (Bayes
 
 These numbers decided how we planned experiments.
 
-- A gain g on one of the six loads moves the score by (1+g)^(1/6). Five percent on one load is about +0.8%, the size of one judge run's own noise (about 0.8%). The headline score therefore cannot decide per-range picks; the per-case table has to.
+- A gain g on one of the six moe loads moves the score by (1+g)^(1/6). Five percent on one load is about +0.8%, the size of one judge run's own noise (about 0.8%). The headline score therefore cannot decide per-range picks; the per-case table has to.
 - Per-shape repeat noise, from two judge runs of the same attention file: about 0.2 to 0.6 us (up to 5%) on 5 to 15 us shapes, and 0.1 to 0.8% on 100 to 190 us shapes. A change under about 0.5 us on a short shape, or under about 1% on a long one, is invisible in one run. A headline score carries a 95% interval of at least plus or minus 1.5%, so an idea needs roughly 2.5 to 3% expected whole-score gain to justify a check.
 - Our bounds used 4.1 TB/s as the practical read rate (85% of 4.8) plus 1.4 us fixed cost. Both are assumptions, flagged as such in the headroom table.
 - The live rules say the final review reruns top entries on the scored shapes and on nearby ones, with positions coming from the scored shapes, and that an entry much slower on nearby shapes gets a closer look. Nearby is not defined anywhere we found. The updates page notes that many submissions include separate variants for the tested shapes. We took the strict reading: dispatch on contiguous ranges and treat boundary behaviour as real.
@@ -71,4 +71,4 @@ Untested design, written down because it saves checks.
 6. Budget: six ranges with three candidates each need 3 checks plus one confirmation, against 18 checks if each range were tested alone. It pays only when the summed expected gain over all ranges is at least 1.5 to 2%.
 7. Boundaries are the honest tension. The judge check times only scored shapes, yet nearby shapes will be rerun. What can be done: choose each boundary at a structural breakpoint of the kernel (tile count, split count, tokens per expert) and not between measured points; rely on the judge's own non-scored correctness cases (the decode_layer suite includes 13 tests such as batch 1 with context 10) for correctness, though not for speed; where a prepare-time harness exists, time the two off-grid sizes beside each boundary as a veto, within the 300 s prepare limit (one team was killed at 437 s); and keep the default route as the explicit fallback for anything outside the measured range.
 
-Not worth doing for us: a thousand-run genetic search with a surrogate model, because it needs a GPU fleet and no public detail exists (see social-post-claims.md).
+Not worth doing for us: a 2,000-experiment genetic search with a surrogate model, because it needs a GPU fleet and no public detail exists (see social-post-claims.md).
