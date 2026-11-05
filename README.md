@@ -25,6 +25,7 @@ The judge's single-run noise is about 1%: the same attention kernel, run four ti
 |`results/SHA256SUMS`|checksums of the five kernel files|
 |`notes/attention.md`|where the attention time goes, what changed and what did not help|
 |`notes/method.md`|how we measured, what we tried per problem, and compliance notes|
+|`research/`|the full set of research notes (cost models, experiments with numbers, negative results, method, literature and repo surveys), indexed in `research/README.md`|
 |`NOTICE`|credits|
 
 ## Running a kernel
