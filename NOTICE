@@ -1,0 +1,16 @@
+Muse Spark Open Kernel Challenge entries, team erkin98.
+
+Four of the five kernels are derived from the public solutions in
+https://github.com/vjeux/okc-2026 at commit f35a41ee1c13e316dabbf772830d47b23b453393
+(Apache License, Version 2.0). Each file keeps that attribution in its header and marks
+the lines we changed.
+
+Ideas credited in the file headers:
+- K-permutation of NVFP4 codes per stage: alygg77/okc-muse-spark-kernels
+- 6-bit lossless NVFP4 block scales: keell0renz/muse-open-kernel-challenge
+- FP32 router input rule at up to 8 tokens: alygg77 and Matsvei
+
+The prefill file reproduces the layer structure of SGLang (Apache License, Version 2.0)
+at commit a55ab7d5ae1bba59ac351e55026fe7f7644ecc5f, as the organizers' task describes it.
+
+Only ideas were taken from other teams' write-ups; no other team's code was copied.
